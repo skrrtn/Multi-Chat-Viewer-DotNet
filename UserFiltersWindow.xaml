@@ -1,0 +1,239 @@
+<Window x:Class="TwitchChatViewer.UserFiltersWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="User Filters - Blacklisted Users" 
+        Height="500" 
+        Width="450"
+        MinHeight="400"
+        MinWidth="400"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1e1e"
+        Icon="logo.ico">
+    
+    <Window.Resources>
+        <!-- Dark Button Style -->
+        <Style x:Key="DarkButton" TargetType="Button">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#3c3c3c"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"
+                                            Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#404040"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#505050"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#1a1a1a"/>
+                                <Setter Property="Foreground" Value="#808080"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark TextBox Style -->
+        <Style x:Key="DarkTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#3c3c3c"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="SelectionBrush" Value="#0078d4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ScrollViewer x:Name="PART_ContentHost" 
+                                        Margin="{TemplateBinding Padding}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#0078d4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark ListBox Style -->
+        <Style x:Key="DarkListBox" TargetType="ListBox">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#3c3c3c"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ScrollViewer>
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark ListBoxItem Style -->
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Background="{TemplateBinding Background}" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#404040"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#0078d4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0" 
+                   Text="User Filters - Blacklisted Users" 
+                   FontSize="16" 
+                   FontWeight="Bold" 
+                   Foreground="White" 
+                   Margin="0,0,0,15"/>
+
+        <!-- Description -->
+        <TextBlock Grid.Row="1" 
+                   TextWrapping="Wrap"
+                   Foreground="#cccccc" 
+                   Margin="0,0,0,15">
+            <Run Text="Users in this list will be blocked from appearing in chat and will not be logged to the database. Enter usernames below and click 'Add User' to blacklist them."/>
+        </TextBlock>
+
+        <!-- Add User Section -->
+        <Grid Grid.Row="2" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:Name="UsernameTextBox" 
+                     Grid.Column="0"
+                     Style="{StaticResource DarkTextBox}"
+                     Margin="0,0,10,0"
+                     KeyDown="UsernameTextBox_KeyDown"
+                     ToolTip="Enter a username to blacklist"/>
+
+            <Button x:Name="AddUserButton" 
+                    Grid.Column="1"
+                    Content="Add User"
+                    Style="{StaticResource DarkButton}"
+                    Click="AddUserButton_Click"
+                    IsDefault="True"/>
+        </Grid>
+
+        <!-- Blacklisted Users List -->
+        <Grid Grid.Row="3">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" 
+                       Text="Blacklisted Users:" 
+                       Foreground="White" 
+                       FontWeight="SemiBold" 
+                       Margin="0,0,0,5"/>
+
+            <ListBox x:Name="BlacklistedUsersListBox" 
+                     Grid.Row="1"
+                     Style="{StaticResource DarkListBox}"
+                     SelectionMode="Extended"
+                     SelectionChanged="BlacklistedUsersListBox_SelectionChanged">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" Foreground="White"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <!-- Action Buttons -->
+        <StackPanel Grid.Row="4" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Center" 
+                    Margin="0,15,0,0">
+            
+            <Button x:Name="RemoveSelectedButton" 
+                    Content="Remove Selected"
+                    Style="{StaticResource DarkButton}"
+                    Click="RemoveSelectedButton_Click"
+                    IsEnabled="False"/>
+
+            <Button x:Name="ClearAllButton" 
+                    Content="Clear All"
+                    Style="{StaticResource DarkButton}"
+                    Click="ClearAllButton_Click"/>
+        </StackPanel>
+
+        <!-- Status/Count -->
+        <Grid Grid.Row="5" Margin="0,15,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock x:Name="StatusTextBlock" 
+                       Grid.Column="0"
+                       Foreground="#cccccc" 
+                       VerticalAlignment="Center"/>
+
+            <TextBlock x:Name="CountTextBlock" 
+                       Grid.Column="1"
+                       Foreground="White" 
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"/>
+        </Grid>
+    </Grid>
+</Window>

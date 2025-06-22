@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <!-- Enable assembly info generation since we're providing it -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>true</GenerateTargetFrameworkAttribute>
+  </PropertyGroup>
+</Project>

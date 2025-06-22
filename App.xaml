@@ -1,0 +1,93 @@
+<Application x:Class="TwitchChatViewer.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:TwitchChatViewer">
+    <Application.Resources>
+        <!-- Converter to display menu headers without interpreting underscores as access keys -->
+        <local:UnderscoreToSpaceConverter x:Key="UnderscoreToSpaceConverter" />        <!-- Global styles -->
+        <Style TargetType="Window">
+            <Setter Property="Background" Value="#1e1e1e"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#1a1a1a"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#3c3c3c"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#555"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#4c4c4c"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#2c2c2c"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#555"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <Style TargetType="Menu">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="BorderBrush" Value="#1a1a1a"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="BorderBrush" Value="#1a1a1a"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <Grid>
+                                <TextBlock Padding="10,5" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}" TextWrapping="Wrap"
+                                           Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Header, Converter={StaticResource UnderscoreToSpaceConverter}}"/>
+                                <Popup IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Bottom" StaysOpen="False">
+                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                                        <ItemsPresenter/>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Role" Value="TopLevelHeader">
+                    <Setter Property="Background" Value="Transparent"/>
+                </Trigger>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#007ACC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="Separator">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Separator">
+                        <Border BorderBrush="#3c3c3c" BorderThickness="0,0,0,1" Margin="30,5,5,5"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Application.Resources>
+</Application>

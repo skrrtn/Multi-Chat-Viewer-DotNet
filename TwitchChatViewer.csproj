@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
+    
+    <!-- Assembly Information -->
+    <AssemblyTitle>Twitch Chat Viewer</AssemblyTitle>
+    <AssemblyProduct>Twitch Chat Viewer</AssemblyProduct>
+    <AssemblyCompany>SKRRTN</AssemblyCompany>
+    <AssemblyDescription>A real-time Twitch chat viewer application</AssemblyDescription>
+    <AssemblyCopyright>Copyright © SKRRTN 2025</AssemblyCopyright>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    
+    <!-- Additional Properties -->
+    <Authors>SKRRTN</Authors>
+    <Product>Twitch Chat Viewer</Product>
+    <Title>Twitch Chat Viewer</Title>
+    <Description>A modern WPF application for viewing Twitch chat in real-time with advanced features like message filtering, user lookup, and multi-channel support.</Description>
+  </PropertyGroup><ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.6" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="logo.ico" />
+  </ItemGroup>
+
+</Project>
