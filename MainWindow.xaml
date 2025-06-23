@@ -277,6 +277,9 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>        <!-- Menu Bar -->        <Menu Grid.Row="0" Background="#2d2d30" Foreground="White">            <MenuItem Header="_File">
+                <MenuItem Header="_Manage Channels" Click="FollowedChannelsMenuItem_Click"/>
+                <Separator/>
+                <MenuItem Header="_Filter Users" Click="UserFiltersMenuItem_Click"/>
                 <MenuItem Header="_Lookup Users" Click="LookupUsersMenuItem_Click"/>
                 <Separator/>
                 <MenuItem Header="_About" Click="AboutMenuItem_Click"/>
@@ -292,10 +295,6 @@
                     <MenuItem Header="+200%" Click="FontScale200_Click"/>                </MenuItem>                <Separator/>
                 <MenuItem Header="_Clear Chat" Click="ClearButton_Click"/>
                 <MenuItem Header="_Refresh Chat" Click="RefreshChatButton_Click"/>
-            </MenuItem>
-            <MenuItem Header="_Options">
-                <MenuItem Header="_Followed Channels" Click="FollowedChannelsMenuItem_Click"/>
-                <MenuItem Header="_User Filters" Click="UserFiltersMenuItem_Click"/>
             </MenuItem></Menu><!-- Chat Display -->
         <Grid Grid.Row="1">            <ListBox x:Name="ChatListBox"
                      ItemsSource="{Binding ChatMessages}" 
