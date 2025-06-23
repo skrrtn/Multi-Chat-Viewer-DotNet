@@ -49,15 +49,34 @@ A native Windows application built with C# and WPF that connects to Twitch IRC t
 - **Resize-Safe Message Handling**: Messages are queued during window resizing to prevent UI freezing
 - **Error Handling & Diagnostics**: Comprehensive error reporting and diagnostic tools
 
-## Getting Started
+## Installation
 
-### Prerequisites
+### Option 1: Download Release (Recommended)
 
+**No .NET Framework Required!**
+
+1. **Download the latest release** from the [Releases](../../releases) page
+2. **Extract the executable** (TwitchChatViewer.exe) to any folder on your computer
+3. **Double-click to run** - No installation or additional software needed!
+
+The release executable is completely self-contained and includes all necessary dependencies. You don't need to install .NET Framework, .NET Runtime, or any other software.
+
+**System Requirements for Release:**
+- Windows 10/11 (64-bit)
+- ~165 MB of disk space
+
+### Option 2: Build from Source
+
+If you want to build from source code or contribute to development:
+
+**Prerequisites:**
 - .NET 8.0 or later
 - Windows 10/11
 - Visual Studio 2022 or VS Code with C# extensions
 
-### Building the Application
+## Getting Started
+
+### Building from Source (For Developers)
 
 1. Open a terminal in the project directory
 2. Restore dependencies:
@@ -88,7 +107,9 @@ The executable will be created in `bin\Release\net8.0-windows\win-x64\publish\`
 ## How to Use
 
 ### Basic Chat Viewing
-1. **Launch the Application**: Run the executable or use `dotnet run`
+1. **Launch the Application**: 
+   - **Release users**: Double-click `TwitchChatViewer.exe`
+   - **Developers**: Use `dotnet run` or run from Visual Studio
 2. **Click Options → Followed Channels**: Open the Followed Channels window
 3. **Enter Channel Name**: Type the Twitch channel name (without the # symbol)
 4. **Add Channel**: Click the "Add" button to start monitoring the channel
