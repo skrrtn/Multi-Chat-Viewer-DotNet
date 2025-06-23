@@ -12,8 +12,8 @@
     <AssemblyCompany>SKRRTN</AssemblyCompany>
     <AssemblyDescription>A modern WPF application for viewing Twitch chat in real-time with advanced features like message filtering, user lookup, and multi-channel support.</AssemblyDescription>
     <AssemblyCopyright>Copyright © SKRRTN 2025</AssemblyCopyright>
-    <AssemblyVersion>1.2.0</AssemblyVersion>
-    <FileVersion>1.2.0</FileVersion>
+    <AssemblyVersion>1.1.0</AssemblyVersion>
+    <FileVersion>1.1.0</FileVersion>
     
     <!-- Additional Properties -->
     <Authors>SKRRTN</Authors>

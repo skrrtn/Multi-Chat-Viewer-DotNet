@@ -15,30 +15,36 @@ namespace TwitchChatViewer
             this.DispatcherUnhandledException += App_DispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
-            base.OnStartup(e);            try
+            base.OnStartup(e);
+            try
             {
                 // Set up dependency injection
                 var services = new ServiceCollection();
                 ConfigureServices(services);
-                _serviceProvider = services.BuildServiceProvider();                // Create and show main window
+                _serviceProvider = services.BuildServiceProvider();
+                // Create and show main window
                 var logger = _serviceProvider.GetRequiredService<ILogger<App>>();
                 logger.LogInformation("Application starting up...");
-                
-                // Check for updates before showing main window
+
+                var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+                logger.LogInformation("MainWindow created, showing window...");
+                mainWindow.Show();
+
+                // Check for updates after showing main window
                 var updateResult = await UpdateChecker.CheckForUpdateAsync();
                 var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown";
                 if (updateResult.UpdateAvailable)
                 {
-                    var updateWindow = new UpdateAvailableWindow(currentVersion, updateResult.LatestTag, updateResult.ReleaseUrl);
+                    var updateWindow = new UpdateAvailableWindow(currentVersion, updateResult.LatestTag, updateResult.ReleaseUrl)
+                    {
+                        Owner = mainWindow // Set main window as owner
+                    };
                     updateWindow.ShowDialog();
                 }
-                
-                var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-                logger.LogInformation("MainWindow created, showing window...");
-                mainWindow.Show();
-                
+
                 logger.LogInformation("Application startup completed");
-            }            catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 var errorDetails = $"Fatal Startup Error:\n\n" +
                                   $"Type: {ex.GetType().Name}\n" +

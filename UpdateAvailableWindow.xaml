@@ -1,22 +1,76 @@
 <Window x:Class="TwitchChatViewer.UpdateAvailableWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Update Available" Height="260" Width="480"
+        xmlns:local="clr-namespace:TwitchChatViewer"
+        Title="Update Available" Height="300" Width="460"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         Background="#1e1e1e"
         Foreground="White"
-        Icon="logo.ico">
-    <Grid Margin="20">
-        <StackPanel>
-            <TextBlock Text="A new version of Twitch Chat Viewer is available!" 
-                       FontSize="16" FontWeight="Bold" Foreground="#ffb347" Margin="0,0,0,10"/>
-            <TextBlock x:Name="CurrentVersionTextBlock" FontSize="13" Margin="0,0,0,2"/>
-            <TextBlock x:Name="LatestVersionTextBlock" FontSize="13" Margin="0,0,0,15"/>
-            <TextBlock Text="Click the button below to download the latest version from GitHub." 
-                       FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
-            <Button Content="Open Release Page" Height="32" Width="180" HorizontalAlignment="Center" Click="OpenReleasePage_Click"/>
-            <Button Content="Close" Height="28" Width="80" HorizontalAlignment="Center" Margin="0,10,0,0" Click="Close_Click"/>
-        </StackPanel>
-    </Grid>
+        Icon="logo.ico"
+        WindowStyle="None"
+        AllowsTransparency="True">
+    <Window.Resources>
+        <!-- Dark Button Style -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#444"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="Margin" Value="4,2,4,2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#3a3a3a"/>
+                                <Setter Property="BorderBrush" Value="#ffb347"/>
+                                <Setter Property="Foreground" Value="#ffb347"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#222"/>
+                                <Setter Property="BorderBrush" Value="#ffb347"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#333"/>
+                                <Setter Property="Foreground" Value="#888"/>
+                                <Setter Property="BorderBrush" Value="#333"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Accent color for headings -->
+        <SolidColorBrush x:Key="AccentBrush" Color="#ffb347"/>
+    </Window.Resources>
+    <Border BorderBrush="#444" BorderThickness="2" CornerRadius="10" Background="#1e1e1e">
+        <Grid Margin="0">
+            <!-- Custom dark titlebar -->
+            <Border Background="#232323" Height="32" VerticalAlignment="Top" CornerRadius="8,8,0,0">
+                <DockPanel LastChildFill="True">
+                    <TextBlock Text="Update Available" Foreground="White" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    <Button Content="✕" Width="32" Height="32" HorizontalAlignment="Right" VerticalAlignment="Top" Click="Close_Click" Background="Transparent" BorderBrush="Transparent" Foreground="#ffb347" FontSize="16"/>
+                </DockPanel>
+            </Border>
+            <Grid Margin="20,40,20,20">
+                <StackPanel>
+                    <TextBlock Text="A new version of Twitch Chat Viewer is available!" 
+                               FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,10"/>
+                    <TextBlock x:Name="CurrentVersionTextBlock" FontSize="13" Margin="0,0,0,2"/>
+                    <TextBlock x:Name="LatestVersionTextBlock" FontSize="13" Margin="0,0,0,15"/>
+                    <TextBlock Text="Click the button below to download the latest version from GitHub." 
+                               FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
+                    <Button Content="Open Release Page" Height="45" Width="180" HorizontalAlignment="Center" Click="OpenReleasePage_Click"/>
+                    <Button Content="Continue" Height="45" Width="80" HorizontalAlignment="Center" Margin="0,10,0,0" Click="Close_Click"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

@@ -32,7 +32,16 @@ namespace TwitchChatViewer
 
         private void Close_Click(object sender, RoutedEventArgs e)
         {
-            this.Close();
+            // Ensure this window is terminated completely, not just closed
+            // Set DialogResult if shown modally, otherwise just close
+            if (this.IsLoaded && this.IsVisible && this.Owner != null)
+            {
+                this.DialogResult = true;
+            }
+            else
+            {
+                this.Close();
+            }
         }
     }
 }
