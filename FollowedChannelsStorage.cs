@@ -10,14 +10,12 @@ namespace TwitchChatViewer
     public class FollowedChannelsStorage
     {
         private readonly ILogger<FollowedChannelsStorage> _logger;
-        private readonly string _storageFilePath;
-
-        public FollowedChannelsStorage(ILogger<FollowedChannelsStorage> logger)
+        private readonly string _storageFilePath;        public FollowedChannelsStorage(ILogger<FollowedChannelsStorage> logger)
         {
             _logger = logger;
             
             // Store in the same directory as the executable
-            var appDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
+            var appDirectory = AppContext.BaseDirectory;
             _storageFilePath = Path.Combine(appDirectory, "followed_channels.json");
             
             _logger.LogInformation("FollowedChannelsStorage initialized with path: {Path}", _storageFilePath);

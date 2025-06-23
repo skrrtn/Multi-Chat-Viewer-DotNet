@@ -29,11 +29,10 @@ namespace TwitchChatViewer
                 if (iconStream != null)
                 {
                     System.Diagnostics.Debug.WriteLine("IconHelper: Successfully loaded logo.ico from embedded resources");
-                    return new Icon(iconStream);
-                }
+                    return new Icon(iconStream);                }
                 
                 // Try to load from file system as fallback
-                var exeDirectory = Path.GetDirectoryName(assembly.Location);
+                var exeDirectory = AppContext.BaseDirectory;
                 var iconPath = Path.Combine(exeDirectory, "logo.ico");
                 
                 if (File.Exists(iconPath))
