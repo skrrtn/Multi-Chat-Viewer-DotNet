@@ -57,9 +57,8 @@ namespace TwitchChatViewer
         }        private async void RefreshChannelsList()
         {
             FollowedChannels.Clear();
-            
-            // Update database sizes first
-            await _channelManager.UpdateDatabaseSizesAsync();
+              // Update database stats first
+            await _channelManager.UpdateDatabaseStatsAsync();
             
             var existingChannels = _channelManager.GetFollowedChannels();
             foreach (var channel in existingChannels)

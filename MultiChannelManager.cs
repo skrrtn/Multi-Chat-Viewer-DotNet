@@ -275,8 +275,7 @@ namespace TwitchChatViewer
                 
                 // Step 0: Validate channel exists on Twitch
                 currentStep = "Validating channel on Twitch";
-                _logger.LogInformation("Step 0: {Step} for channel: {Channel}", currentStep, normalizedChannel);
-                var isValidChannel = await IsValidTwitchChannelAsync(normalizedChannel);
+                _logger.LogInformation("Step 0: {Step} for channel: {Channel}", currentStep, normalizedChannel);                var isValidChannel = await IsValidTwitchChannelAsync(normalizedChannel);
                 if (!isValidChannel)
                 {
                     _logger.LogWarning("❌ Channel validation failed: {Channel} does not appear to exist on Twitch", normalizedChannel);
@@ -320,6 +319,12 @@ namespace TwitchChatViewer
                 _logger.LogInformation("Step 4: {Step} for channel: {Channel}", currentStep, normalizedChannel);
                 followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel);
                 _logger.LogInformation("✓ Step 4: Database size calculated for: {Channel} ({Size} bytes)", normalizedChannel, followedChannel.DatabaseSize);
+
+                // Step 4.5: Load existing message count from database
+                currentStep = "Loading existing message count";
+                _logger.LogInformation("Step 4.5: {Step} for channel: {Channel}", currentStep, normalizedChannel);
+                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel);
+                _logger.LogInformation("✓ Step 4.5: Loaded existing message count for: {Channel} ({Count} messages)", normalizedChannel, followedChannel.MessageCount);
 
                 // Step 5: Connect to IRC
                 currentStep = "Connecting to IRC";
@@ -625,6 +630,9 @@ namespace TwitchChatViewer
                 // Update database size
                 followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel);
 
+                // Load existing message count from database
+                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel);
+
                 _logger.LogInformation("Added offline channel: {Channel}", normalizedChannel);
                 return true;
             }
@@ -737,9 +745,9 @@ namespace TwitchChatViewer
                     }
                 }
             }
-        }        public Task UpdateDatabaseSizesAsync()
+        }        public Task UpdateDatabaseStatsAsync()
         {
-            return Task.Run(() =>
+            return Task.Run(async () =>
             {
                 foreach (var channel in _followedChannels.Values)
                 {
@@ -747,15 +755,19 @@ namespace TwitchChatViewer
                     {
                         var dbSize = ChatDatabaseService.GetDatabaseSizeByPath(channel.Name);
                         channel.DatabaseSize = dbSize;
+                        
+                        var messageCount = await ChatDatabaseService.GetMessageCountByPathAsync(channel.Name);
+                        channel.MessageCount = messageCount;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error updating database size for channel: {Channel}", channel.Name);
+                        _logger.LogError(ex, "Error updating database stats for channel: {Channel}", channel.Name);
                         channel.DatabaseSize = 0;
+                        channel.MessageCount = 0;
                     }
                 }
             });
-        }        public void Dispose()
+        }public void Dispose()
         {
             try
             {
@@ -989,13 +1001,17 @@ namespace TwitchChatViewer
                 database = new ChatDatabaseService(_loggerFactory.CreateLogger<ChatDatabaseService>());
                 await database.InitializeDatabaseAsync(normalizedChannel);
                 _databases[normalizedChannel] = database;
-                _logger.LogInformation("✓ Step 3: Successfully initialized database for: {Channel}", normalizedChannel);
-
-                // Step 4: Update database size
+                _logger.LogInformation("✓ Step 3: Successfully initialized database for: {Channel}", normalizedChannel);                // Step 4: Update database size
                 currentStep = "Reading database size";
                 _logger.LogInformation("Step 4: {Step} for channel: {Channel}", currentStep, normalizedChannel);
                 followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel);
                 _logger.LogInformation("✓ Step 4: Database size calculated for: {Channel} ({Size} bytes)", normalizedChannel, followedChannel.DatabaseSize);
+
+                // Step 4.5: Load existing message count from database
+                currentStep = "Loading existing message count";
+                _logger.LogInformation("Step 4.5: {Step} for channel: {Channel}", currentStep, normalizedChannel);
+                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel);
+                _logger.LogInformation("✓ Step 4.5: Loaded existing message count for: {Channel} ({Count} messages)", normalizedChannel, followedChannel.MessageCount);
 
                 // Step 5: Connect to IRC
                 currentStep = "Connecting to IRC";

@@ -237,6 +237,37 @@ namespace TwitchChatViewer
             {
                 return 0;
             }
+        }
+
+        public static async Task<int> GetMessageCountByPathAsync(string channelName)
+        {
+            try
+            {
+                var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
+                var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                
+                if (!File.Exists(dbPath))
+                {
+                    return 0;
+                }
+
+                var connectionString = $"Data Source={dbPath};Mode=ReadOnly;Cache=Shared";
+                using var connection = new SqliteConnection(connectionString);
+                await connection.OpenAsync();
+                
+                // Set busy timeout for concurrent operations
+                using var timeoutCommand = new SqliteCommand("PRAGMA busy_timeout=5000;", connection);
+                await timeoutCommand.ExecuteNonQueryAsync();
+                
+                var countSql = "SELECT COUNT(*) FROM chat_messages";
+                using var command = new SqliteCommand(countSql, connection);
+                var result = await command.ExecuteScalarAsync();
+                return Convert.ToInt32(result);
+            }
+            catch
+            {
+                return 0;
+            }
         }        public async Task<List<ChatMessage>> GetRecentMessagesAsync(int count = 100)
         {
             var messages = new List<ChatMessage>();
