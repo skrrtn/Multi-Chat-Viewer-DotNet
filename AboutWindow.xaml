@@ -71,7 +71,6 @@
                            Foreground="#cccccc"
                            Margin="0,0,0,8"/>                
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                    <TextBlock Text="• " Foreground="#cccccc" VerticalAlignment="Center"/>
                     <TextBlock VerticalAlignment="Center">
                         <Hyperlink NavigateUri="https://venmo.com/u/skrrtn" 
                                    RequestNavigate="Hyperlink_RequestNavigate"
