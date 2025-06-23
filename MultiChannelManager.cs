@@ -40,17 +40,18 @@ namespace TwitchChatViewer
                 _loggingEnabled = value;
                 OnPropertyChanged(nameof(LoggingEnabled));
             }
-        }
-
-        public int MessageCount
+        }        public int MessageCount
         {
             get => _messageCount;
             set
             {
                 _messageCount = value;
                 OnPropertyChanged(nameof(MessageCount));
+                OnPropertyChanged(nameof(MessageCountFormatted));
             }
         }
+
+        public string MessageCountFormatted => FormatMessageCount(MessageCount);
 
         public DateTime LastMessageTime
         {
@@ -129,6 +130,18 @@ namespace TwitchChatViewer
             }
             
             return $"{size:0.##} {sizes[order]}";
+        }
+
+        private static string FormatMessageCount(int count)
+        {
+            if (count < 1000)
+                return count.ToString();
+            else if (count < 1000000)
+                return $"{count / 1000.0:0.#}k";
+            else if (count < 1000000000)
+                return $"{count / 1000000.0:0.#}M";
+            else
+                return $"{count / 1000000000.0:0.#}B";
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

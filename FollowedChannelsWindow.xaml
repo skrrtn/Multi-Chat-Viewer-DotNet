@@ -266,7 +266,7 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 
-                <DataGridTextColumn Header="Messages" Binding="{Binding MessageCount}" Width="80" IsReadOnly="True">
+                <DataGridTextColumn Header="Messages" Binding="{Binding MessageCountFormatted}" Width="80" IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="HorizontalAlignment" Value="Right"/>
