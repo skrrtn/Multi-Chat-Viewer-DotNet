@@ -2,6 +2,8 @@
 
 A native Windows application built with C# and WPF that connects to Twitch IRC to display real-time chat messages.
 
+![Screenshot](screenshot.png)
+
 ## Features
 
 ### Core Chat Features
