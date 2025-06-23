@@ -367,13 +367,7 @@ namespace TwitchChatViewer
                     RefreshChannelsList();
                     _logger.LogInformation("Refreshed channels list after checkbox change for channel: {Channel}", channel.Name);
                 });
-            }
-        }
-
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            this.Close();
-        }
+            }        }
 
         private void OnChannelConnected(object sender, string channel)
         {
@@ -415,11 +409,10 @@ namespace TwitchChatViewer
         {
             // Messages are automatically handled by the MultiChannelManager
             // This event can be used for additional processing if needed
-        }
-
-        private void UpdateStatus(string message)
+        }        private void UpdateStatus(string message)
         {
-            StatusTextBlock.Text = $"{DateTime.Now:HH:mm:ss} - {message}";
+            // Status bar has been removed - optionally log status messages
+            _logger.LogInformation("Status: {Message}", message);
         }
 
         private void UpdateTimer_Tick(object sender, EventArgs e)

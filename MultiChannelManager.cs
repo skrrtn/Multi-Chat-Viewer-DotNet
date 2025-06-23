@@ -61,14 +61,12 @@ namespace TwitchChatViewer
                 OnPropertyChanged(nameof(LastMessageTime));
                 OnPropertyChanged(nameof(LastMessageTimeFormatted));
             }
-        }
-
-        public string LastMessageTimeFormatted 
+        }        public string LastMessageTimeFormatted 
         {
             get
             {
                 if (LastMessageTime == default)
-                    return "Never";
+                    return "";
                 
                 var timeSpan = DateTime.Now - LastMessageTime;
                 var totalSeconds = timeSpan.TotalSeconds;
