@@ -10,7 +10,7 @@
     <AssemblyTitle>Twitch Chat Viewer</AssemblyTitle>
     <AssemblyProduct>Twitch Chat Viewer</AssemblyProduct>
     <AssemblyCompany>SKRRTN</AssemblyCompany>
-    <AssemblyDescription>A real-time Twitch chat viewer application</AssemblyDescription>
+    <AssemblyDescription>A modern WPF application for viewing Twitch chat in real-time with advanced features like message filtering, user lookup, and multi-channel support.</AssemblyDescription>
     <AssemblyCopyright>Copyright © SKRRTN 2025</AssemblyCopyright>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>

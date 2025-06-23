@@ -200,12 +200,27 @@ namespace TwitchChatViewer
                 var errorWindow = new ErrorWindow(errorDetails);
                 errorWindow.ShowDialog();
                 throw;
-            }        }
-
-        private void FollowedChannelsMenuItem_Click(object sender, RoutedEventArgs e)
+            }        }        private void FollowedChannelsMenuItem_Click(object sender, RoutedEventArgs e)
         {
             OpenFollowedChannelsWindow();
-        }        private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
+        }
+
+        private void AboutMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var aboutWindow = new AboutWindow();
+                aboutWindow.Owner = this;
+                aboutWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error opening About window");
+                System.Windows.MessageBox.Show($"Error opening About window: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
         {
             ExitApplication();
         }

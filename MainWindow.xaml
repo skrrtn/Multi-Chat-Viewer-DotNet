@@ -279,6 +279,7 @@
         </Grid.RowDefinitions>        <!-- Menu Bar -->        <Menu Grid.Row="0" Background="#2d2d30" Foreground="White">            <MenuItem Header="_File">
                 <MenuItem Header="_Lookup Users" Click="LookupUsersMenuItem_Click"/>
                 <Separator/>
+                <MenuItem Header="_About" Click="AboutMenuItem_Click"/>
                 <MenuItem Header="_Exit" Click="ExitMenuItem_Click"/>
             </MenuItem>
             <MenuItem Header="_View">
