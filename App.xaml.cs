@@ -9,7 +9,7 @@ namespace TwitchChatViewer
     {
         private ServiceProvider _serviceProvider;
 
-        protected override void OnStartup(StartupEventArgs e)
+        protected override async void OnStartup(StartupEventArgs e)
         {
             // Set up global exception handling
             this.DispatcherUnhandledException += App_DispatcherUnhandledException;
@@ -23,6 +23,15 @@ namespace TwitchChatViewer
                 _serviceProvider = services.BuildServiceProvider();                // Create and show main window
                 var logger = _serviceProvider.GetRequiredService<ILogger<App>>();
                 logger.LogInformation("Application starting up...");
+                
+                // Check for updates before showing main window
+                var updateResult = await UpdateChecker.CheckForUpdateAsync();
+                var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown";
+                if (updateResult.UpdateAvailable)
+                {
+                    var updateWindow = new UpdateAvailableWindow(currentVersion, updateResult.LatestTag, updateResult.ReleaseUrl);
+                    updateWindow.ShowDialog();
+                }
                 
                 var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
                 logger.LogInformation("MainWindow created, showing window...");

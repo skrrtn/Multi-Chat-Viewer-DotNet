@@ -1,0 +1,22 @@
+<Window x:Class="TwitchChatViewer.UpdateAvailableWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Update Available" Height="260" Width="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#1e1e1e"
+        Foreground="White"
+        Icon="logo.ico">
+    <Grid Margin="20">
+        <StackPanel>
+            <TextBlock Text="A new version of Twitch Chat Viewer is available!" 
+                       FontSize="16" FontWeight="Bold" Foreground="#ffb347" Margin="0,0,0,10"/>
+            <TextBlock x:Name="CurrentVersionTextBlock" FontSize="13" Margin="0,0,0,2"/>
+            <TextBlock x:Name="LatestVersionTextBlock" FontSize="13" Margin="0,0,0,15"/>
+            <TextBlock Text="Click the button below to download the latest version from GitHub." 
+                       FontSize="12" TextWrapping="Wrap" Margin="0,0,0,15"/>
+            <Button Content="Open Release Page" Height="32" Width="180" HorizontalAlignment="Center" Click="OpenReleasePage_Click"/>
+            <Button Content="Close" Height="28" Width="80" HorizontalAlignment="Center" Margin="0,10,0,0" Click="Close_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
