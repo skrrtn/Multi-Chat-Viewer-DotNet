@@ -48,7 +48,7 @@ namespace TwitchChatViewer
                 errorWindow.ShowDialog();
                 throw;
             }
-        }        private void ConfigureServices(ServiceCollection services)
+        }        private static void ConfigureServices(ServiceCollection services)
         {
             services.AddLogging(builder =>
             {

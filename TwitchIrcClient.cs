@@ -181,14 +181,13 @@ namespace TwitchChatViewer
         }        private ChatMessage ParseChatMessage(string rawMessage)
         {
             try
-            {
-                // Example format: :username!username@username.tmi.twitch.tv PRIVMSG #channel :message
+            {                // Example format: :username!username@username.tmi.twitch.tv PRIVMSG #channel :message
                 var parts = rawMessage.Split(' ', 4);
                 if (parts.Length < 4) return null;
 
-                var userPart = parts[0].Substring(1); // Remove leading ':'
+                var userPart = parts[0][1..]; // Remove leading ':'
                 var username = userPart.Split('!')[0];
-                var messagePart = parts[3].Substring(1); // Remove leading ':'
+                var messagePart = parts[3][1..]; // Remove leading ':'
 
                 var chatMessage = new ChatMessage
                 {

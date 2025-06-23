@@ -8,14 +8,9 @@ using System.Linq;
 
 namespace TwitchChatViewer
 {
-    public class UserMessageLookupService
+    public class UserMessageLookupService(ILogger<UserMessageLookupService> logger)
     {
-        private readonly ILogger<UserMessageLookupService> _logger;
-
-        public UserMessageLookupService(ILogger<UserMessageLookupService> logger)
-        {
-            _logger = logger;
-        }
+        private readonly ILogger<UserMessageLookupService> _logger = logger;
 
         /// <summary>
         /// Gets all channels where the specified user has posted messages
@@ -221,13 +216,12 @@ namespace TwitchChatViewer
                 foreach (var channel in channels)
                 {
                     var channelMessages = await SearchUserMessagesInChannelAsync(username, channel.ChannelName, searchText);
-                    messages.AddRange(channelMessages);
-                }
+                    messages.AddRange(channelMessages);                }
 
                 // Sort by timestamp across all channels
-                messages = messages.OrderBy(m => m.Timestamp).ToList();
+                messages = [.. messages.OrderBy(m => m.Timestamp)];
                 
-                _logger.LogInformation("Found {Count} messages containing '{SearchText}' for user {Username} across {ChannelCount} channels", 
+                _logger.LogInformation("Found {Count} messages containing '{SearchText}' for user {Username} across {ChannelCount} channels",
                     messages.Count, searchText, username, channels.Count);
             }
             catch (Exception ex)

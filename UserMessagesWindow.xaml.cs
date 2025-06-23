@@ -14,11 +14,10 @@ namespace TwitchChatViewer
     {
         private readonly UserMessageLookupService _userMessageService;
         private readonly ILogger<UserMessagesWindow> _logger;
-        private readonly string _username;
-        private readonly string _currentChannel;
+        private readonly string _username;        private readonly string _currentChannel;
 
-        public ObservableCollection<UserChannelInfo> AvailableChannels { get; } = new();
-        public ObservableCollection<ChatMessageWithChannel> UserMessages { get; } = new();
+        public ObservableCollection<UserChannelInfo> AvailableChannels { get; } = [];
+        public ObservableCollection<ChatMessageWithChannel> UserMessages { get; } = [];
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -203,8 +202,7 @@ namespace TwitchChatViewer
             if (e is MentionClickEventArgs mentionArgs && !string.IsNullOrEmpty(mentionArgs.MentionedUsername))
             {
                 try
-                {
-                    _logger.LogInformation("Opening user messages window for mentioned user: {Username}", mentionArgs.MentionedUsername);
+                {                    _logger.LogInformation("Opening user messages window for mentioned user: {Username}", mentionArgs.MentionedUsername);
                     
                     // Create another UserMessagesWindow for the mentioned user
                     var userMessagesWindow = new UserMessagesWindow(
@@ -212,9 +210,11 @@ namespace TwitchChatViewer
                         _logger,
                         mentionArgs.MentionedUsername,
                         null // No specific channel filter for mentioned user
-                    );
+                    )
+                    {
+                        Owner = this.Owner // Set the same owner as this window
+                    };
                     
-                    userMessagesWindow.Owner = this.Owner; // Set the same owner as this window
                     userMessagesWindow.Show();
                 }
                 catch (Exception ex)

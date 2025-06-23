@@ -51,36 +51,28 @@ namespace TwitchChatViewer
                 // Ultimate fallback
                 return SystemIcons.Application;
             }
-        }
-        
-        [SupportedOSPlatform("windows6.1")]
+        }        [SupportedOSPlatform("windows6.1")]
         private static Icon CreateSimpleIcon()
         {
             // Create a 16x16 bitmap with a simple design
-            using (var bitmap = new Bitmap(16, 16))
+            using var bitmap = new Bitmap(16, 16);
+            using var graphics = Graphics.FromImage(bitmap);
+            // Purple background (Twitch color)
+            graphics.Clear(Color.FromArgb(145, 70, 255));
+            
+            // White "T" for Twitch
+            using var brush = new SolidBrush(Color.White);
+            using var font = new Font("Arial", 10, FontStyle.Bold);
+            using var stringFormat = new StringFormat
             {
-                using (var graphics = Graphics.FromImage(bitmap))
-                {
-                    // Purple background (Twitch color)
-                    graphics.Clear(Color.FromArgb(145, 70, 255));
-                    
-                    // White "T" for Twitch
-                    using (var brush = new SolidBrush(Color.White))
-                    using (var font = new Font("Arial", 10, FontStyle.Bold))
-                    {
-                        var stringFormat = new StringFormat
-                        {
-                            Alignment = StringAlignment.Center,
-                            LineAlignment = StringAlignment.Center
-                        };
-                        graphics.DrawString("T", font, brush, new RectangleF(0, 0, 16, 16), stringFormat);
-                    }
-                }
-                
-                // Convert to icon
-                IntPtr hIcon = bitmap.GetHicon();
-                return Icon.FromHandle(hIcon);
-            }
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
+            graphics.DrawString("T", font, brush, new RectangleF(0, 0, 16, 16), stringFormat);
+            
+            // Convert to icon
+            IntPtr hIcon = bitmap.GetHicon();
+            return Icon.FromHandle(hIcon);
         }
     }
 }

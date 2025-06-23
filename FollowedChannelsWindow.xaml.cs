@@ -17,7 +17,7 @@ namespace TwitchChatViewer
         private readonly ILogger<FollowedChannelsWindow> _logger;
         private readonly DispatcherTimer _updateTimer;
         
-        public ObservableCollection<FollowedChannel> FollowedChannels { get; } = new();
+        public ObservableCollection<FollowedChannel> FollowedChannels { get; } = [];
         public event EventHandler<string> SwitchToChannelRequested;        public FollowedChannelsWindow(MultiChannelManager channelManager, ILogger<FollowedChannelsWindow> logger)
         {
             InitializeComponent();
@@ -64,13 +64,7 @@ namespace TwitchChatViewer
             foreach (var channel in existingChannels)
             {
                 FollowedChannels.Add(channel);
-            }
-            UpdateStatus($"Loaded {existingChannels.Count} followed channels");
-        }
-
-        private void LoadExistingChannels()
-        {
-            RefreshChannelsList();
+            }            UpdateStatus($"Loaded {existingChannels.Count} followed channels");
         }
 
         private async void AddChannelButton_Click(object sender, RoutedEventArgs e)
@@ -322,22 +316,16 @@ namespace TwitchChatViewer
                     UpdateStatus($"Successfully removed {successCount} {channelWord}");
                 }
             }
-        }private void ViewInMainButton_Click(object sender, RoutedEventArgs e)
+        }        private void ViewInMainButton_Click(object sender, RoutedEventArgs e)
         {
-            var button = sender as Button;
-            var selectedChannel = button?.DataContext as FollowedChannel;
-            
-            if (selectedChannel != null)
+            if (sender is Button button && button.DataContext is FollowedChannel selectedChannel)
             {
                 SwitchToChannelRequested?.Invoke(this, selectedChannel.Name);
                 UpdateStatus($"Switching main window to channel: {selectedChannel.Name}");
             }
         }        private async void LoggingCheckBox_Click(object sender, RoutedEventArgs e)
         {
-            var checkBox = sender as CheckBox;
-            var channel = checkBox?.DataContext as FollowedChannel;
-            
-            if (channel != null)
+            if (sender is CheckBox checkBox && checkBox.DataContext is FollowedChannel channel)
             {
                 var isChecked = checkBox.IsChecked ?? false;
                 var statusText = isChecked ? "enabled" : "disabled";
@@ -466,11 +454,10 @@ namespace TwitchChatViewer
                         
                         // Use the static method to clear messages for any channel
                         await ChatDatabaseService.ClearAllMessagesForChannelAsync(selectedChannel.Name, _logger);
-                        
-                        // Update the channel's properties
+                          // Update the channel's properties
                         selectedChannel.MessageCount = 0;
                         selectedChannel.DatabaseSize = 0;
-                        selectedChannel.LastMessageTime = default(DateTime);
+                        selectedChannel.LastMessageTime = default;
                         
                         successCount++;
                         _logger.LogInformation("Successfully erased messages from channel: {Channel}", selectedChannel.Name);

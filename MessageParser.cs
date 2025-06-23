@@ -4,11 +4,12 @@ using System.Text.RegularExpressions;
 
 namespace TwitchChatViewer
 {
-    public static class MessageParser
+    public static partial class MessageParser
     {
         // Regex pattern to match @username mentions
         // Matches @ followed by alphanumeric characters, underscores, and hyphens
-        private static readonly Regex MentionRegex = new Regex(@"@([a-zA-Z0-9_-]+)", RegexOptions.Compiled);
+        [GeneratedRegex(@"@([a-zA-Z0-9_-]+)", RegexOptions.Compiled)]
+        private static partial Regex MentionRegex();
 
         /// <summary>
         /// Parses a chat message and identifies @username mentions
@@ -22,9 +23,7 @@ namespace TwitchChatViewer
             if (string.IsNullOrEmpty(message))
             {
                 return parts;
-            }
-
-            var matches = MentionRegex.Matches(message);
+            }            var matches = MentionRegex().Matches(message);
             
             if (matches.Count == 0)
             {
@@ -40,11 +39,10 @@ namespace TwitchChatViewer
             int lastIndex = 0;
             
             foreach (Match match in matches)
-            {
-                // Add text before the mention (if any)
+            {                // Add text before the mention (if any)
                 if (match.Index > lastIndex)
                 {
-                    var beforeText = message.Substring(lastIndex, match.Index - lastIndex);
+                    var beforeText = message[lastIndex..match.Index];
                     if (!string.IsNullOrEmpty(beforeText))
                     {
                         parts.Add(new MessagePart
@@ -64,12 +62,10 @@ namespace TwitchChatViewer
                 });
 
                 lastIndex = match.Index + match.Length;
-            }
-
-            // Add remaining text after the last mention (if any)
+            }            // Add remaining text after the last mention (if any)
             if (lastIndex < message.Length)
             {
-                var remainingText = message.Substring(lastIndex);
+                var remainingText = message[lastIndex..];
                 if (!string.IsNullOrEmpty(remainingText))
                 {
                     parts.Add(new MessagePart

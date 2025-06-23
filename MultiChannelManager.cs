@@ -113,20 +113,17 @@ namespace TwitchChatViewer
             }
         }
 
-        public string DatabaseSizeFormatted => FormatFileSize(DatabaseSize);
-
-        private static string FormatFileSize(long bytes)
+        public string DatabaseSizeFormatted => FormatFileSize(DatabaseSize);        private static string FormatFileSize(long bytes)
         {
             if (bytes == 0) return "0 B";
             
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+            string[] sizes = ["B", "KB", "MB", "GB", "TB"];
             int order = 0;
             double size = bytes;
-            
-            while (size >= 1024 && order < sizes.Length - 1)
+              while (size >= 1024 && order < sizes.Length - 1)
             {
                 order++;
-                size = size / 1024;
+                size /= 1024;
             }
             
             return $"{size:0.##} {sizes[order]}";
@@ -149,32 +146,24 @@ namespace TwitchChatViewer
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-    }    public class MultiChannelManager : IDisposable
-    {        private readonly ILogger<MultiChannelManager> _logger;
-        private readonly ILoggerFactory _loggerFactory;
-        private readonly ChannelSettingsManager _settingsManager;
-        private readonly UserFilterService _userFilterService;
-        private readonly FollowedChannelsStorage _followedChannelsStorage;
+    }    public class MultiChannelManager(ILogger<MultiChannelManager> logger, ILoggerFactory loggerFactory, ChannelSettingsManager settingsManager, UserFilterService userFilterService, FollowedChannelsStorage followedChannelsStorage) : IDisposable
+    {        private readonly ILogger<MultiChannelManager> _logger = logger;
+        private readonly ILoggerFactory _loggerFactory = loggerFactory;
+        private readonly ChannelSettingsManager _settingsManager = settingsManager;
+        private readonly UserFilterService _userFilterService = userFilterService;
+        private readonly FollowedChannelsStorage _followedChannelsStorage = followedChannelsStorage;
         private readonly ConcurrentDictionary<string, TwitchIrcClient> _clients = new();
         private readonly ConcurrentDictionary<string, ChatDatabaseService> _databases = new();
-        private readonly ConcurrentDictionary<string, FollowedChannel> _followedChannels = new();        public event EventHandler<(string Channel, ChatMessage Message)> MessageReceived;
+        private readonly ConcurrentDictionary<string, FollowedChannel> _followedChannels = new();public event EventHandler<(string Channel, ChatMessage Message)> MessageReceived;
         public event EventHandler<string> ChannelConnected;
         public event EventHandler<string> ChannelDisconnected;
         public event EventHandler<string> ChannelRemoved;
-        public event EventHandler<(string Channel, string Error)> ChannelError;
-        public event EventHandler<(string Channel, bool LoggingEnabled)> ChannelLoggingChanged;public MultiChannelManager(ILogger<MultiChannelManager> logger, ILoggerFactory loggerFactory, ChannelSettingsManager settingsManager, UserFilterService userFilterService, FollowedChannelsStorage followedChannelsStorage)
-        {
-            _logger = logger;
-            _loggerFactory = loggerFactory;
-            _settingsManager = settingsManager;
-            _userFilterService = userFilterService;
-            _followedChannelsStorage = followedChannelsStorage;
-        }
+        public event EventHandler<(string Channel, string Error)> ChannelError;        public event EventHandler<(string Channel, bool LoggingEnabled)> ChannelLoggingChanged;
 
         public List<FollowedChannel> GetFollowedChannels()
         {
-            return _followedChannels.Values.ToList();
-        }        public async Task LoadFollowedChannelsAsync()
+            return [.. _followedChannels.Values];
+        }public async Task LoadFollowedChannelsAsync()
         {
             try
             {
@@ -666,9 +655,8 @@ namespace TwitchChatViewer
                 if (_followedChannels.TryGetValue(normalizedChannel, out var followedChannel))
                 {
                     followedChannel.Status = "Connecting...";
-                    
-                    // Create IRC client if it doesn't exist
-                    if (!_clients.ContainsKey(normalizedChannel))
+                      // Create IRC client if it doesn't exist
+                    if (!_clients.TryGetValue(normalizedChannel, out var existingClient))
                     {
                         var client = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>());
                         client.MessageReceived += (sender, message) => OnClientMessageReceived(normalizedChannel, message);
@@ -676,10 +664,11 @@ namespace TwitchChatViewer
                         client.Disconnected += (sender, args) => OnClientDisconnected(normalizedChannel);
                         client.Error += (sender, error) => OnClientError(normalizedChannel, error);
                         _clients[normalizedChannel] = client;
+                        existingClient = client;
                     }
                     
                     // Connect to IRC
-                    await _clients[normalizedChannel].ConnectAsync(normalizedChannel);
+                    await existingClient.ConnectAsync(normalizedChannel);
                 }
             }
             catch (Exception ex)
@@ -783,7 +772,7 @@ namespace TwitchChatViewer
                     }
                 }
             });
-        }public void Dispose()
+        }        public void Dispose()
         {
             try
             {
@@ -793,6 +782,8 @@ namespace TwitchChatViewer
             {
                 _logger?.LogError(ex, "Error during MultiChannelManager disposal");
             }
+            
+            GC.SuppressFinalize(this);
         }
 
         public async Task RetryConnectionAsync(string channelName)

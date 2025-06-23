@@ -10,19 +10,14 @@ using System.Windows.Media;
 namespace TwitchChatViewer
 {
     public class MessagePartsToInlinesConverter : IMultiValueConverter
-    {
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
             if (values.Length >= 1 && values[0] is List<MessagePart> messageParts)
             {
                 var inlines = new List<Inline>();
-                double fontSize = 12.0; // Default font size
                 
                 // Check if font size is provided as second parameter
-                if (values.Length >= 2 && values[1] is double providedFontSize)
-                {
-                    fontSize = providedFontSize;
-                }
+                double fontSize = values.Length >= 2 && values[1] is double providedFontSize ? providedFontSize : 12.0;
 
                 foreach (var part in messageParts)
                 {
@@ -33,7 +28,8 @@ namespace TwitchChatViewer
                         {
                             Foreground = new SolidColorBrush(Color.FromRgb(255, 165, 0)), // Orange color
                             FontWeight = FontWeights.Bold,
-                            Background = new SolidColorBrush(Color.FromRgb(255, 165, 0)) { Opacity = 0.2 }
+                            Background = new SolidColorBrush(Color.FromRgb(255, 165, 0)) { Opacity = 0.2 },
+                            FontSize = fontSize
                         };
                         
                         inlines.Add(mentionRun);
@@ -43,19 +39,19 @@ namespace TwitchChatViewer
                         // Regular text
                         var textRun = new Run(part.Text)
                         {
-                            Foreground = Brushes.White
+                            Foreground = Brushes.White,
+                            FontSize = fontSize
                         };
                         inlines.Add(textRun);
                     }
                 }
 
                 return inlines;
-            }
-
-            // Fallback: if no parsed parts, return the original message as a single run
+            }            // Fallback: if no parsed parts, return the original message as a single run
             if (parameter is string fallbackMessage)
             {
-                return new List<Inline> { new Run(fallbackMessage) { Foreground = Brushes.White } };
+                double fontSize = values.Length >= 2 && values[1] is double providedFontSize ? providedFontSize : 12.0;
+                return new List<Inline> { new Run(fallbackMessage) { Foreground = Brushes.White, FontSize = fontSize } };
             }
 
             return new List<Inline>();

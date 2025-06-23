@@ -9,11 +9,12 @@ namespace TwitchChatViewer
     /// Utility class to enable dark mode title bar on Windows 10/11
     /// </summary>
     public static class DarkModeHelper
-    {
-        [DllImport("dwmapi.dll", PreserveSig = true)]
+    {        [DllImport("dwmapi.dll", PreserveSig = true)]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "SYSLIB1054", Justification = "LibraryImport not suitable for this Windows-specific P/Invoke")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, uint attr, ref int attrValue, int attrSize);
 
         [DllImport("dwmapi.dll")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "SYSLIB1054", Justification = "LibraryImport not suitable for this Windows-specific P/Invoke")]
         private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
 
         [StructLayout(LayoutKind.Sequential)]
@@ -72,14 +73,13 @@ namespace TwitchChatViewer
                 int result = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
                 
                 // If that fails, try the older attribute (Windows 10)
-                if (result != 0)
-                {
-                    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref darkMode, sizeof(int));
+                if (result != 0)                {
+                    _ = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref darkMode, sizeof(int));
                 }
 
                 // Enable rounded corners if supported (Windows 11)
                 int cornerPreference = (int)DWMWCP_ROUND;
-                DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerPreference, sizeof(int));
+                _ = DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerPreference, sizeof(int));
             }
             catch (Exception)
             {

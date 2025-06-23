@@ -6,17 +6,13 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
 namespace TwitchChatViewer
-{
-    public class ChatDatabaseService
+{    public class ChatDatabaseService(ILogger<ChatDatabaseService> logger)
     {
-        private readonly ILogger<ChatDatabaseService> _logger;
+        private readonly ILogger<ChatDatabaseService> _logger = logger;
         private string _currentDatabasePath;
         private SqliteConnection _connection;
 
-        public ChatDatabaseService(ILogger<ChatDatabaseService> logger)
-        {
-            _logger = logger;
-        }        public async Task InitializeDatabaseAsync(string channelName)
+        public async Task InitializeDatabaseAsync(string channelName)
         {
             try
             {

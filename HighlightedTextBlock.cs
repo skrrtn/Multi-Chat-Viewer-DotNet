@@ -247,26 +247,12 @@ namespace TwitchChatViewer
             _richTextBox.Document.Blocks.Add(paragraph);
         }
     }    // Custom event args for username clicks
-    public class UsernameClickEventArgs : RoutedEventArgs
+    public class UsernameClickEventArgs(RoutedEvent routedEvent, object source, string username) : RoutedEventArgs(routedEvent, source)
     {
-        public string Username { get; }
-
-        public UsernameClickEventArgs(RoutedEvent routedEvent, object source, string username) 
-            : base(routedEvent, source)
-        {
-            Username = username;
-        }
-    }
-
-    // Custom event args for mention clicks
-    public class MentionClickEventArgs : RoutedEventArgs
+        public string Username { get; } = username;
+    }    // Custom event args for mention clicks
+    public class MentionClickEventArgs(RoutedEvent routedEvent, object source, string mentionedUsername) : RoutedEventArgs(routedEvent, source)
     {
-        public string MentionedUsername { get; }
-
-        public MentionClickEventArgs(RoutedEvent routedEvent, object source, string mentionedUsername) 
-            : base(routedEvent, source)
-        {
-            MentionedUsername = mentionedUsername;
-        }
+        public string MentionedUsername { get; } = mentionedUsername;
     }
 }

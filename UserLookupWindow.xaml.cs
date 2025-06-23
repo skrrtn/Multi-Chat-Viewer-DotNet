@@ -18,10 +18,9 @@ namespace TwitchChatViewer
     {
         private readonly ILogger<UserLookupWindow> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly UserMessageLookupService _userMessageService;
         private readonly string _currentChannel;
 
-        public ObservableCollection<UserSearchResult> SearchResults { get; } = new();
+        public ObservableCollection<UserSearchResult> SearchResults { get; } = [];
         
         private bool _isSearching = false;
         private string _lastSearchText = "";
@@ -32,14 +31,12 @@ namespace TwitchChatViewer
         public UserLookupWindow(
             ILogger<UserLookupWindow> logger,
             IServiceProvider serviceProvider,
-            UserMessageLookupService userMessageService,
             string currentChannel = null)
         {
             InitializeComponent();
             
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            _userMessageService = userMessageService ?? throw new ArgumentNullException(nameof(userMessageService));
             _currentChannel = currentChannel;
 
             DataContext = this;
@@ -133,7 +130,7 @@ namespace TwitchChatViewer
                 if (!Directory.Exists(dbDirectory))
                 {
                     _logger.LogWarning("Database directory not found: {Directory}", dbDirectory);
-                    return new List<UserSearchResult>();
+                    return [];
                 }
 
                 var dbFiles = Directory.GetFiles(dbDirectory, "*.db");
@@ -168,15 +165,15 @@ namespace TwitchChatViewer
                                     Username = channelUser.Username, // Use original casing from first occurrence
                                     TotalMessages = channelUser.MessageCount,
                                     ChannelCount = 1,
-                                    Channels = new List<UserChannelInfo>
-                                    {
-                                        new UserChannelInfo 
-                                        { 
-                                            ChannelName = channelName, 
+                                    Channels =
+                                    [
+                                        new()
+                                        {
+                                            ChannelName = channelName,
                                             MessageCount = channelUser.MessageCount,
                                             LastMessageTime = channelUser.LastMessageTime
                                         }
-                                    }
+                                    ]
                                 };
                                 userResults[channelUser.Username.ToLower()] = userResult;
                             }
@@ -198,7 +195,7 @@ namespace TwitchChatViewer
                 throw;
             }
 
-            return userResults.Values.ToList();
+            return [..userResults.Values];
         }
 
         private async Task<List<ChannelUserResult>> SearchUsersInChannelAsync(string searchText, string channelName, string dbPath)
@@ -313,9 +310,10 @@ namespace TwitchChatViewer
                     userMessageService,
                     logger,
                     user.Username,
-                    _currentChannel);
-
-                userMessagesWindow.Owner = this;
+                    _currentChannel)
+                {
+                    Owner = this
+                };
                 userMessagesWindow.Show();
 
                 _logger.LogInformation("Opened user messages window for user: {Username}", user.Username);
@@ -351,11 +349,10 @@ namespace TwitchChatViewer
         }    }
 
     public class UserSearchResult
-    {
-        public string Username { get; set; }
+    {        public string Username { get; set; }
         public int TotalMessages { get; set; }
         public int ChannelCount { get; set; }
-        public List<UserChannelInfo> Channels { get; set; } = new();
+        public List<UserChannelInfo> Channels { get; set; } = [];
         
         public string DisplayText => $"({TotalMessages} message{(TotalMessages != 1 ? "s" : "")} | {ChannelCount} channel{(ChannelCount != 1 ? "s" : "")})";
     }

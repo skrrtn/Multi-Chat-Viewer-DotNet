@@ -11,53 +11,43 @@ namespace TwitchChatViewer
     {
         public bool LoggingEnabled { get; set; } = true;
         public DateTime LastModified { get; set; } = DateTime.Now;
-    }
-
-    public class ChannelSettingsManager
+    }    public class ChannelSettingsManager(ILogger<ChannelSettingsManager> logger)
     {
-        private readonly ILogger<ChannelSettingsManager> _logger;
-        private readonly string _settingsFilePath;
-        private Dictionary<string, ChannelSettings> _channelSettings;
-
-        public ChannelSettingsManager(ILogger<ChannelSettingsManager> logger)
-        {
-            _logger = logger;
-            _settingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "channel_settings.json");
-            _channelSettings = new Dictionary<string, ChannelSettings>();
-        }
+        private readonly ILogger<ChannelSettingsManager> _logger = logger;
+        private readonly string _settingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "channel_settings.json");
+        private Dictionary<string, ChannelSettings> _channelSettings = [];
+        
+        // Cache JsonSerializerOptions to avoid creating new instances
+        private static readonly JsonSerializerOptions _jsonOptions = new() 
+        { 
+            WriteIndented = true 
+        };
 
         public async Task LoadSettingsAsync()
         {
             try
             {
-                if (File.Exists(_settingsFilePath))
-                {
+                if (File.Exists(_settingsFilePath))                {
                     var json = await File.ReadAllTextAsync(_settingsFilePath);
                     _channelSettings = JsonSerializer.Deserialize<Dictionary<string, ChannelSettings>>(json) 
-                                      ?? new Dictionary<string, ChannelSettings>();
+                                      ?? [];
                     _logger.LogInformation("Loaded settings for {Count} channels", _channelSettings.Count);
-                }
-                else
+                }else
                 {
-                    _channelSettings = new Dictionary<string, ChannelSettings>();
+                    _channelSettings = [];
                     _logger.LogInformation("No existing settings file found, starting with default settings");
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading channel settings, using defaults");
-                _channelSettings = new Dictionary<string, ChannelSettings>();
+                _channelSettings = [];
             }
-        }
-
-        public async Task SaveSettingsAsync()
+        }        public async Task SaveSettingsAsync()
         {
             try
             {
-                var json = JsonSerializer.Serialize(_channelSettings, new JsonSerializerOptions 
-                { 
-                    WriteIndented = true 
-                });
+                var json = JsonSerializer.Serialize(_channelSettings, _jsonOptions);
                 await File.WriteAllTextAsync(_settingsFilePath, json);
                 _logger.LogInformation("Saved settings for {Count} channels", _channelSettings.Count);
             }
@@ -77,19 +67,18 @@ namespace TwitchChatViewer
             
             // Default to enabled for new channels
             return true;
-        }
-
-        public async Task SetLoggingEnabledAsync(string channelName, bool enabled)
+        }        public async Task SetLoggingEnabledAsync(string channelName, bool enabled)
         {
             var normalizedChannel = channelName.ToLower();
             
-            if (!_channelSettings.ContainsKey(normalizedChannel))
+            if (!_channelSettings.TryGetValue(normalizedChannel, out var settings))
             {
-                _channelSettings[normalizedChannel] = new ChannelSettings();
+                settings = new ChannelSettings();
+                _channelSettings[normalizedChannel] = settings;
             }
             
-            _channelSettings[normalizedChannel].LoggingEnabled = enabled;
-            _channelSettings[normalizedChannel].LastModified = DateTime.Now;
+            settings.LoggingEnabled = enabled;
+            settings.LastModified = DateTime.Now;
             
             await SaveSettingsAsync();
             _logger.LogInformation("Updated logging setting for channel {Channel}: {Enabled}", channelName, enabled);

@@ -12,15 +12,13 @@ namespace TwitchChatViewer
     {
         private readonly UserFilterService _userFilterService;
         private readonly ILogger<UserFiltersWindow> _logger;
-        private readonly ObservableCollection<string> _blacklistedUsers;
-
+        private readonly ObservableCollection<string> _blacklistedUsers = [];
         public UserFiltersWindow(UserFilterService userFilterService, ILogger<UserFiltersWindow> logger)
         {
             InitializeComponent();
             
             _userFilterService = userFilterService;
             _logger = logger;
-            _blacklistedUsers = new ObservableCollection<string>();
 
             // Enable dark mode title bar
             DarkModeHelper.EnableDarkMode(this);
@@ -86,12 +84,10 @@ namespace TwitchChatViewer
                     StatusTextBlock.Text = "Please enter a username";
                     UsernameTextBox.Focus();
                     return;
-                }
-
-                // Remove @ symbol if present
-                if (username.StartsWith("@"))
+                }                // Remove @ symbol if present
+                if (username.StartsWith('@'))
                 {
-                    username = username.Substring(1);
+                    username = username[1..];
                 }
 
                 var success = await _userFilterService.AddUserAsync(username);
@@ -119,10 +115,9 @@ namespace TwitchChatViewer
         private async void RemoveSelectedButton_Click(object sender, RoutedEventArgs e)
         {
             try
-            {
-                var selectedUsers = BlacklistedUsersListBox.SelectedItems.Cast<string>().ToList();
+            {                var selectedUsers = BlacklistedUsersListBox.SelectedItems.Cast<string>().ToList();
                 
-                if (!selectedUsers.Any())
+                if (selectedUsers.Count == 0)
                 {
                     StatusTextBlock.Text = "No users selected for removal";
                     return;

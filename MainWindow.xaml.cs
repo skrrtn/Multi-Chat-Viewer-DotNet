@@ -29,22 +29,22 @@ namespace TwitchChatViewer
         private string _currentChannel;
         private int _currentChannelMessageCount;        private string _currentChannelDatabaseSize = "0 B";
         private double _chatFontSize = 12.0; // Default font size matches BaseFontSize
-        private System.Windows.Threading.DispatcherTimer _statusUpdateTimer;
+        private readonly System.Windows.Threading.DispatcherTimer _statusUpdateTimer = new();
           // Performance and scroll management
         private const int MAX_MESSAGES_IN_CHAT = 1200;
         private bool _isAutoScrollEnabled = true;
         private bool _scrollToTopButtonVisible = false;
-        private readonly Queue<ChatMessage> _pendingMessages = new Queue<ChatMessage>();
+        private readonly Queue<ChatMessage> _pendingMessages = new();
         private int _pendingMessageCount = 0;        // Window resize handling for performance
         private bool _isResizing = false;
-        private System.Windows.Threading.DispatcherTimer _resizeTimer;
-        private readonly Queue<ChatMessage> _resizePausedMessages = new Queue<ChatMessage>();
+        private readonly System.Windows.Threading.DispatcherTimer _resizeTimer = new();
+        private readonly Queue<ChatMessage> _resizePausedMessages = new();
 
         // Window minimize handling for performance
         private bool _isMinimized = false;
-        private readonly Queue<ChatMessage> _minimizedPausedMessages = new Queue<ChatMessage>();
+        private readonly Queue<ChatMessage> _minimizedPausedMessages = [];
 
-        public ObservableCollection<ChatMessage> ChatMessages { get; } = new();public bool IsConnected
+        public ObservableCollection<ChatMessage> ChatMessages { get; } = [];public bool IsConnected
         {
             get => _isConnected;
             set
@@ -145,8 +145,7 @@ namespace TwitchChatViewer
                 _multiChannelManager.MessageReceived += OnBackgroundMessageReceived;// Load followed channels when window is loaded
                 this.Loaded += MainWindow_Loaded;                // Add scroll event handling for the chat ListBox
                 this.Loaded += (s, e) => {
-                    var chatListBox = this.FindName("ChatListBox") as System.Windows.Controls.ListBox;
-                    if (chatListBox != null)
+                    if (this.FindName("ChatListBox") is System.Windows.Controls.ListBox chatListBox)
                     {
                         // Get the ScrollViewer from the ListBox template
                         var scrollViewer = GetScrollViewer(chatListBox);
@@ -156,18 +155,12 @@ namespace TwitchChatViewer
                         }
                     }
                 };
-                
-                // Initialize timer for updating current channel stats
-                _statusUpdateTimer = new System.Windows.Threading.DispatcherTimer
-                {
-                    Interval = TimeSpan.FromSeconds(5) // Update every 5 seconds
-                };                _statusUpdateTimer.Tick += StatusUpdateTimer_Tick;
+                  // Initialize timer for updating current channel stats
+                _statusUpdateTimer.Interval = TimeSpan.FromSeconds(5); // Update every 5 seconds
+                _statusUpdateTimer.Tick += StatusUpdateTimer_Tick;
                 _statusUpdateTimer.Start();                // Initialize resize timer for pausing messages during window resize
-                _resizeTimer = new System.Windows.Threading.DispatcherTimer
-                {
-                    Interval = TimeSpan.FromMilliseconds(200) // 200ms delay after resize stops - reduced for better responsiveness
-                };
-                _resizeTimer.Tick += ResizeTimer_Tick;                // Subscribe to window resize events
+                _resizeTimer.Interval = TimeSpan.FromMilliseconds(200); // 200ms delay after resize stops - reduced for better responsiveness
+                _resizeTimer.Tick += ResizeTimer_Tick;// Subscribe to window resize events
                 this.SizeChanged += MainWindow_SizeChanged;
                 
                 // Subscribe to window state changes for minimize/restore handling
@@ -206,11 +199,12 @@ namespace TwitchChatViewer
         }
 
         private void AboutMenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            try
+        {            try
             {
-                var aboutWindow = new AboutWindow();
-                aboutWindow.Owner = this;
+                var aboutWindow = new AboutWindow
+                {
+                    Owner = this
+                };
                 aboutWindow.ShowDialog();
             }
             catch (Exception ex)
@@ -225,12 +219,10 @@ namespace TwitchChatViewer
             ExitApplication();
         }
 
-        private void LookupUsersMenuItem_Click(object sender, RoutedEventArgs e)
-        {
+        private void LookupUsersMenuItem_Click(object sender, RoutedEventArgs e)        {
             try
             {
-                var userLookupWindow = _serviceProvider.GetService(typeof(UserLookupWindow)) as UserLookupWindow;
-                if (userLookupWindow != null)
+                if (_serviceProvider.GetService(typeof(UserLookupWindow)) is UserLookupWindow userLookupWindow)
                 {
                     userLookupWindow.Owner = this;
                     userLookupWindow.Show();
@@ -245,10 +237,8 @@ namespace TwitchChatViewer
                 _logger.LogError(ex, "Error opening User Lookup window");                System.Windows.MessageBox.Show("Error opening User Lookup window. Please try again.", "Error", 
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }private void UserFiltersMenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            var userFiltersWindow = _serviceProvider.GetService(typeof(UserFiltersWindow)) as UserFiltersWindow;
-            if (userFiltersWindow != null)
+        }private void UserFiltersMenuItem_Click(object sender, RoutedEventArgs e)        {
+            if (_serviceProvider.GetService(typeof(UserFiltersWindow)) is UserFiltersWindow userFiltersWindow)
             {
                 userFiltersWindow.Owner = this;
                 userFiltersWindow.ShowDialog();
@@ -269,17 +259,16 @@ namespace TwitchChatViewer
                     
                     // Get required dependencies from service provider
                     var userMessageService = _serviceProvider.GetRequiredService<UserMessageLookupService>();
-                    var logger = _serviceProvider.GetRequiredService<ILogger<UserMessagesWindow>>();
-                    
-                    // Create UserMessagesWindow with required dependencies
+                    var logger = _serviceProvider.GetRequiredService<ILogger<UserMessagesWindow>>();                    // Create UserMessagesWindow with required dependencies
                     var userMessagesWindow = new UserMessagesWindow(
                         userMessageService,
                         logger,
                         usernameArgs.Username,
                         CurrentChannel
-                    );
-                    
-                    userMessagesWindow.Owner = this;
+                    )
+                    {
+                        Owner = this
+                    };
                     userMessagesWindow.Show(); // Use Show() instead of ShowDialog() so user can continue interacting with main window
                 }
                 catch (Exception ex)
@@ -307,16 +296,16 @@ namespace TwitchChatViewer
                     // Get required dependencies from service provider
                     var userMessageService = _serviceProvider.GetRequiredService<UserMessageLookupService>();
                     var logger = _serviceProvider.GetRequiredService<ILogger<UserMessagesWindow>>();
-                    
-                    // Create UserMessagesWindow with required dependencies
+                      // Create UserMessagesWindow with required dependencies
                     var userMessagesWindow = new UserMessagesWindow(
                         userMessageService,
                         logger,
                         mentionArgs.MentionedUsername,
                         CurrentChannel
-                    );
-                    
-                    userMessagesWindow.Owner = this;
+                    )
+                    {
+                        Owner = this
+                    };
                     userMessagesWindow.Show(); // Use Show() instead of ShowDialog() so user can continue interacting with main window
                 }
                 catch (Exception ex)
@@ -563,17 +552,13 @@ namespace TwitchChatViewer
                         for (int i = 0; i < messagesToRemove; i++)
                         {
                             ChatMessages.RemoveAt(ChatMessages.Count - 1);
-                        }
-                        _logger.LogDebug("Trimmed {Count} old messages to maintain {MaxMessages} message limit", 
+                        }                        _logger.LogDebug("Trimmed {Count} old messages to maintain {MaxMessages} message limit", 
                             messagesToRemove, MAX_MESSAGES_IN_CHAT);
                     }
 
                     // Auto-scroll to top
                     var scrollViewer = ChatScrollViewer;
-                    if (scrollViewer != null)
-                    {
-                        scrollViewer.ScrollToTop();
-                    }
+                    scrollViewer?.ScrollToTop();
                 }
                 else
                 {
@@ -732,14 +717,14 @@ namespace TwitchChatViewer
         {
             if (bytes == 0) return "0 B";
             
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+            string[] sizes = ["B", "KB", "MB", "GB", "TB"];
             int order = 0;
             double size = bytes;
             
             while (size >= 1024 && order < sizes.Length - 1)
             {
                 order++;
-                size = size / 1024;
+                size /= 1024;
             }
             
             return $"{size:0.##} {sizes[order]}";
@@ -896,14 +881,9 @@ namespace TwitchChatViewer
                                 ChatMessages.RemoveAt(ChatMessages.Count - 1);
                             }
                             _logger.LogDebug("Trimmed {Count} old messages to maintain {MaxMessages} message limit", 
-                                messagesToRemove, MAX_MESSAGES_IN_CHAT);                        }
-
-                        // Auto-scroll to top
+                                messagesToRemove, MAX_MESSAGES_IN_CHAT);                        }                        // Auto-scroll to top
                         var scrollViewer = ChatScrollViewer;
-                        if (scrollViewer != null)
-                        {
-                            scrollViewer.ScrollToTop();
-                        }
+                        scrollViewer?.ScrollToTop();
                     }
                     else
                     {
@@ -924,10 +904,12 @@ namespace TwitchChatViewer
         }[SupportedOSPlatform("windows6.1")]        private void InitializeSystemTray()
         {            try
             {
-                _notifyIcon = new NotifyIcon();
-                _notifyIcon.Icon = IconHelper.GetApplicationIcon();
-                _notifyIcon.Text = "Twitch Chat Viewer";
-                _notifyIcon.Visible = true; // Always visible in notification area
+                _notifyIcon = new NotifyIcon
+                {
+                    Icon = IconHelper.GetApplicationIcon(),
+                    Text = "Twitch Chat Viewer",
+                    Visible = true // Always visible in notification area
+                };
 
                 // Create context menu for tray icon
                 var contextMenu = new ContextMenuStrip();
@@ -1018,9 +1000,7 @@ namespace TwitchChatViewer
                 _logger.LogError(ex, "Error during application exit");
             }
         }        private void ChatScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
-        {
-            var scrollViewer = sender as ScrollViewer;
-            if (scrollViewer == null) return;
+        {            if (sender is not ScrollViewer scrollViewer) return;
 
             // Check if user has scrolled away from the top
             const double scrollThreshold = 10.0; // Allow some tolerance
@@ -1097,11 +1077,9 @@ namespace TwitchChatViewer
             if (!_isResizing)
             {
                 _isResizing = true;
-                _logger.LogDebug("Window resize started - pausing message rendering");
-                
+                _logger.LogDebug("Window resize started - pausing message rendering");                
                 // Temporarily suspend layout updates for better performance
-                var chatListBox = this.FindName("ChatListBox") as System.Windows.Controls.ListBox;
-                if (chatListBox != null)
+                if (this.FindName("ChatListBox") is System.Windows.Controls.ListBox chatListBox)
                 {
                     chatListBox.BeginInit();
                 }
@@ -1116,11 +1094,9 @@ namespace TwitchChatViewer
             _resizeTimer.Stop();
             _isResizing = false;
             
-            _logger.LogDebug("Window resize ended - resuming message rendering. Processing {Count} paused messages", _resizePausedMessages.Count);
-            
+            _logger.LogDebug("Window resize ended - resuming message rendering. Processing {Count} paused messages", _resizePausedMessages.Count);            
             // Resume layout updates
-            var chatListBox = this.FindName("ChatListBox") as System.Windows.Controls.ListBox;
-            if (chatListBox != null)
+            if (this.FindName("ChatListBox") is System.Windows.Controls.ListBox chatListBox)
             {
                 chatListBox.EndInit();
             }
@@ -1168,14 +1144,10 @@ namespace TwitchChatViewer
                 }
                 _logger.LogDebug("Trimmed {Count} old messages to maintain {MaxMessages} message limit after processing resize-paused messages", 
                     messagesToRemove, MAX_MESSAGES_IN_CHAT);
-            }            // Auto-scroll to top if enabled
-            if (_isAutoScrollEnabled)
+            }            // Auto-scroll to top if enabled            if (_isAutoScrollEnabled)
             {
                 var scrollViewer = ChatScrollViewer;
-                if (scrollViewer != null)
-                {
-                    scrollViewer.ScrollToTop();
-                }
+                scrollViewer?.ScrollToTop();
             }
 
             _logger.LogInformation("Processed {Count} resize-paused messages", _resizePausedMessages.Count);
@@ -1243,14 +1215,9 @@ namespace TwitchChatViewer
                     IsSystemMessage = true
                 };
                 MessageParser.ParseChatMessage(systemMessage);
-                ChatMessages.Insert(0, systemMessage);
-
-                // Auto-scroll to top since we enabled auto-scroll
+                ChatMessages.Insert(0, systemMessage);                // Auto-scroll to top since we enabled auto-scroll
                 var scrollViewer = ChatScrollViewer;
-                if (scrollViewer != null)
-                {
-                    scrollViewer.ScrollToTop();
-                }
+                scrollViewer?.ScrollToTop();
 
                 _logger.LogInformation("Successfully reloaded {Count} messages from database for channel: {Channel}", 
                     recentMessages.Count, CurrentChannel);
@@ -1273,7 +1240,7 @@ namespace TwitchChatViewer
         }
 
         // Helper method to get the ScrollViewer from a ListBox
-        private ScrollViewer GetScrollViewer(DependencyObject depObj)
+        private static ScrollViewer GetScrollViewer(DependencyObject depObj)
         {
             if (depObj is ScrollViewer scrollViewer)
                 return scrollViewer;
@@ -1291,11 +1258,9 @@ namespace TwitchChatViewer
         private ScrollViewer ChatScrollViewer 
         { 
             get 
-            { 
-                if (_chatScrollViewer == null)
+            {                if (_chatScrollViewer == null)
                 {
-                    var chatListBox = this.FindName("ChatListBox") as System.Windows.Controls.ListBox;
-                    if (chatListBox != null)
+                    if (this.FindName("ChatListBox") is System.Windows.Controls.ListBox chatListBox)
                     {
                         _chatScrollViewer = GetScrollViewer(chatListBox);
                     }

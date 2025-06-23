@@ -25,10 +25,11 @@ namespace TwitchChatViewer
                 var button = sender as Button;
                 var originalText = button.Content.ToString();
                 button.Content = "Copied!";
-                
-                // Reset button text after 1 second
-                var timer = new System.Windows.Threading.DispatcherTimer();
-                timer.Interval = TimeSpan.FromSeconds(1);
+                  // Reset button text after 1 second
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(1)
+                };
                 timer.Tick += (s, args) =>
                 {
                     button.Content = originalText;

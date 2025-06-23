@@ -17,6 +17,6 @@ namespace TwitchChatViewer
         public DateTime Timestamp { get; set; } = DateTime.Now;
         public bool IsSystemMessage { get; set; } = false;
         public string Color { get; set; } = "#569cd6"; // Default blue color for usernames
-        public List<MessagePart> ParsedMessage { get; set; } = new List<MessagePart>();
+        public List<MessagePart> ParsedMessage { get; set; } = [];
     }
 }

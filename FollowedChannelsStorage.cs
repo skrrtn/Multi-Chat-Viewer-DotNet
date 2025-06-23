@@ -6,11 +6,18 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace TwitchChatViewer
-{
-    public class FollowedChannelsStorage
+{    public class FollowedChannelsStorage
     {
         private readonly ILogger<FollowedChannelsStorage> _logger;
-        private readonly string _storageFilePath;        public FollowedChannelsStorage(ILogger<FollowedChannelsStorage> logger)
+        private readonly string _storageFilePath;
+        
+        // Cache JsonSerializerOptions to avoid creating new instances
+        private static readonly JsonSerializerOptions _jsonOptions = new() 
+        { 
+            WriteIndented = true 
+        };
+
+        public FollowedChannelsStorage(ILogger<FollowedChannelsStorage> logger)
         {
             _logger = logger;
             
@@ -19,44 +26,37 @@ namespace TwitchChatViewer
             _storageFilePath = Path.Combine(appDirectory, "followed_channels.json");
             
             _logger.LogInformation("FollowedChannelsStorage initialized with path: {Path}", _storageFilePath);
-        }
-
-        public async Task<List<string>> LoadChannelsAsync()
+        }        public async Task<List<string>> LoadChannelsAsync()
         {
             try
             {
                 if (!File.Exists(_storageFilePath))
                 {
                     _logger.LogInformation("No followed channels file found, returning empty list");
-                    return new List<string>();
+                    return [];
                 }
 
                 var json = await File.ReadAllTextAsync(_storageFilePath);
                 if (string.IsNullOrWhiteSpace(json))
                 {
                     _logger.LogInformation("Followed channels file is empty, returning empty list");
-                    return new List<string>();
+                    return [];
                 }
 
-                var channels = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+                var channels = JsonSerializer.Deserialize<List<string>>(json) ?? [];
                 _logger.LogInformation("Loaded {Count} followed channels from storage", channels.Count);
                 return channels;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading followed channels from {Path}", _storageFilePath);
-                return new List<string>();
+                return [];
             }
-        }
-
-        public async Task SaveChannelsAsync(List<string> channels)
+        }        public async Task SaveChannelsAsync(List<string> channels)
         {
             try
             {
-                var json = JsonSerializer.Serialize(channels, new JsonSerializerOptions 
-                { 
-                    WriteIndented = true 
-                });
+                var json = JsonSerializer.Serialize(channels, _jsonOptions);
                 
                 await File.WriteAllTextAsync(_storageFilePath, json);
                 _logger.LogInformation("Saved {Count} followed channels to storage", channels.Count);

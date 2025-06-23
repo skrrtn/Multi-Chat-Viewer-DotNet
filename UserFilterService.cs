@@ -7,13 +7,17 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace TwitchChatViewer
-{
-    public class UserFilterService
+{    public class UserFilterService
     {
+        private static readonly JsonSerializerOptions SerializerOptions = new()
+        {
+            WriteIndented = true
+        };
+        
         private readonly ILogger<UserFilterService> _logger;
         private readonly string _filtersFilePath;
         private readonly HashSet<string> _blacklistedUsers;
-        private readonly object _lock = new object();
+        private readonly object _lock = new();
 
         public UserFilterService(ILogger<UserFilterService> logger)
         {
@@ -76,13 +80,11 @@ namespace TwitchChatViewer
             UserRemoved?.Invoke(this, username);
             _logger.LogInformation("Removed user '{Username}' from blacklist", username);
             return true;
-        }
-
-        public List<string> GetBlacklistedUsers()
+        }        public List<string> GetBlacklistedUsers()
         {
             lock (_lock)
             {
-                return _blacklistedUsers.OrderBy(u => u).ToList();
+                return [.. _blacklistedUsers.OrderBy(u => u)];
             }
         }
 
@@ -136,16 +138,12 @@ namespace TwitchChatViewer
         private async Task SaveFiltersAsync()
         {
             try
-            {
-                var data = new UserFiltersData
+            {                var data = new UserFiltersData
                 {
                     BlacklistedUsers = GetBlacklistedUsers()
                 };
 
-                var json = JsonSerializer.Serialize(data, new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                });
+                var json = JsonSerializer.Serialize(data, SerializerOptions);
 
                 await File.WriteAllTextAsync(_filtersFilePath, json);
                 _logger.LogDebug("Saved user filters to file");
@@ -154,11 +152,9 @@ namespace TwitchChatViewer
             {
                 _logger.LogError(ex, "Error saving user filters to file");
             }
-        }
-
-        private class UserFiltersData
+        }        private class UserFiltersData
         {
-            public List<string> BlacklistedUsers { get; set; } = new();
+            public List<string> BlacklistedUsers { get; set; } = [];
         }
     }
 }
