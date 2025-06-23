@@ -157,11 +157,12 @@ namespace TwitchChatViewer
         private readonly FollowedChannelsStorage _followedChannelsStorage;
         private readonly ConcurrentDictionary<string, TwitchIrcClient> _clients = new();
         private readonly ConcurrentDictionary<string, ChatDatabaseService> _databases = new();
-        private readonly ConcurrentDictionary<string, FollowedChannel> _followedChannels = new();public event EventHandler<(string Channel, ChatMessage Message)> MessageReceived;
+        private readonly ConcurrentDictionary<string, FollowedChannel> _followedChannels = new();        public event EventHandler<(string Channel, ChatMessage Message)> MessageReceived;
         public event EventHandler<string> ChannelConnected;
         public event EventHandler<string> ChannelDisconnected;
         public event EventHandler<string> ChannelRemoved;
-        public event EventHandler<(string Channel, string Error)> ChannelError;        public MultiChannelManager(ILogger<MultiChannelManager> logger, ILoggerFactory loggerFactory, ChannelSettingsManager settingsManager, UserFilterService userFilterService, FollowedChannelsStorage followedChannelsStorage)
+        public event EventHandler<(string Channel, string Error)> ChannelError;
+        public event EventHandler<(string Channel, bool LoggingEnabled)> ChannelLoggingChanged;public MultiChannelManager(ILogger<MultiChannelManager> logger, ILoggerFactory loggerFactory, ChannelSettingsManager settingsManager, UserFilterService userFilterService, FollowedChannelsStorage followedChannelsStorage)
         {
             _logger = logger;
             _loggerFactory = loggerFactory;
@@ -609,10 +610,12 @@ namespace TwitchChatViewer
                     followedChannel.IsConnected = false;
                     followedChannel.Status = "OFFLINE";
                 }
-            }
-            
+            }            
             _logger.LogInformation("Final state for channel {Channel}: LoggingEnabled={Enabled}, IsConnected={IsConnected}, Status={Status}", 
                 normalizedChannel, followedChannel.LoggingEnabled, followedChannel.IsConnected, followedChannel.Status);
+            
+            // Fire event to notify subscribers (like MainWindow) that logging status changed
+            ChannelLoggingChanged?.Invoke(this, (normalizedChannel, loggingEnabled));
         }
 
         public async Task<bool> AddChannelOfflineAsync(string channelName)

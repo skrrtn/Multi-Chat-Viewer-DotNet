@@ -138,10 +138,10 @@ namespace TwitchChatViewer
                 _twitchClient.MessageReceived += OnMessageReceived;
                 _twitchClient.Connected += OnConnected;
                 _twitchClient.Disconnected += OnDisconnected;
-                _twitchClient.Error += OnError;
-                  // Subscribe to MultiChannelManager events for status updates                _multiChannelManager.ChannelConnected += OnChannelConnected;
+                _twitchClient.Error += OnError;                // Subscribe to MultiChannelManager events for status updates                _multiChannelManager.ChannelConnected += OnChannelConnected;
                 _multiChannelManager.ChannelDisconnected += OnChannelDisconnected;
                 _multiChannelManager.ChannelRemoved += OnChannelRemoved;
+                _multiChannelManager.ChannelLoggingChanged += OnChannelLoggingChanged;
                 _multiChannelManager.MessageReceived += OnBackgroundMessageReceived;// Load followed channels when window is loaded
                 this.Loaded += MainWindow_Loaded;                // Add scroll event handling for the chat ListBox
                 this.Loaded += (s, e) => {
@@ -661,13 +661,21 @@ namespace TwitchChatViewer
             {
                 UpdateFollowedChannelsStatus();
             });
-        }
-
-        private void OnChannelRemoved(object sender, string channelName)
+        }        private void OnChannelRemoved(object sender, string channelName)
         {
             Dispatcher.Invoke(() =>
             {
                 UpdateFollowedChannelsStatus();
+            });
+        }
+
+        private void OnChannelLoggingChanged(object sender, (string Channel, bool LoggingEnabled) args)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                UpdateFollowedChannelsStatus();
+                _logger.LogDebug("Status bar updated after logging change for channel: {Channel}, LoggingEnabled: {LoggingEnabled}", 
+                    args.Channel, args.LoggingEnabled);
             });
         }
 
@@ -764,6 +772,13 @@ namespace TwitchChatViewer
                 // Stop the timers
                 _statusUpdateTimer?.Stop();
                 _resizeTimer?.Stop();
+                
+                // Unsubscribe from events
+                _multiChannelManager.ChannelConnected -= OnChannelConnected;
+                _multiChannelManager.ChannelDisconnected -= OnChannelDisconnected;
+                _multiChannelManager.ChannelRemoved -= OnChannelRemoved;
+                _multiChannelManager.ChannelLoggingChanged -= OnChannelLoggingChanged;
+                _multiChannelManager.MessageReceived -= OnBackgroundMessageReceived;
                 
                 // Dispose system tray icon
                 if (OperatingSystem.IsWindowsVersionAtLeast(6, 1) && _notifyIcon != null)
