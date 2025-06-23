@@ -490,10 +490,10 @@ docs/drafts/
 # ==========================================================================
 
 # Git hooks (if any)
-.git/hooks/
+.git/
 
 # GitHub Desktop
-.github/workflows/local/
+.github/
 
 # ==========================================================================
 # MISCELLANEOUS
