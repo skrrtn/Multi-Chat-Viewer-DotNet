@@ -60,7 +60,9 @@ namespace TwitchChatViewer
               // Update database stats first
             await _channelManager.UpdateDatabaseStatsAsync();
             
-            var existingChannels = _channelManager.GetFollowedChannels();
+            var existingChannels = _channelManager.GetFollowedChannels()
+                .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
             foreach (var channel in existingChannels)
             {
                 FollowedChannels.Add(channel);
