@@ -266,28 +266,33 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 
-                <DataGridTextColumn Header="Messages" Binding="{Binding MessageCountFormatted}" Width="80" IsReadOnly="True">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
+                <!-- Messages: sort by MessageCount, display MessageCountFormatted -->
+                <DataGridTemplateColumn Header="Messages" SortMemberPath="MessageCount" Width="80" IsReadOnly="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding MessageCountFormatted}" HorizontalAlignment="Right"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 
-                <DataGridTextColumn Header="DB Size" Binding="{Binding DatabaseSizeFormatted}" Width="80" IsReadOnly="True">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>                </DataGridTextColumn>
+                <!-- DB Size: sort by DatabaseSize, display DatabaseSizeFormatted -->
+                <DataGridTemplateColumn Header="DB Size" SortMemberPath="DatabaseSize" Width="80" IsReadOnly="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DatabaseSizeFormatted}" HorizontalAlignment="Right"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 
-                <DataGridTextColumn Header="Last Activity" Binding="{Binding LastMessageTimeFormatted}" Width="120" IsReadOnly="True">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>            </DataGrid.Columns>
+                <!-- Last Activity: sort by LastMessageTime, display LastMessageTimeFormatted -->
+                <DataGridTemplateColumn Header="Last Activity" SortMemberPath="LastMessageTime" Width="120" IsReadOnly="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding LastMessageTimeFormatted}" HorizontalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
         </DataGrid>
     </Grid>
 </Window>
