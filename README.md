@@ -1,23 +1,26 @@
 # Twitch Chat Viewer
 
-A native Windows application built with C# and WPF that connects to Twitch IRC to display real-time chat messages.
+A native Windows application built with C# and WPF that connects to Twitch IRC and Kick.com chat to display real-time chat messages from both platforms.
 
 ![Screenshot](screenshot.png)
 
 ## Features
 
 ### Core Chat Features
-- **Real-time Chat Display**: Connect to any Twitch channel and view chat messages as they come in
+- **Real-time Chat Display**: Connect to any Twitch or Kick.com channel and view chat messages as they come in
+- **Multi-Platform Support**: Support for both Twitch and Kick.com chat platforms with unified interface
 - **Modern Dark UI**: Clean, modern interface with a dark theme optimized for viewing
-- **Anonymous Connection**: No need for authentication - connects as an anonymous user
+- **Anonymous Connection**: No need for authentication - connects as an anonymous user (Twitch) or guest (Kick)
 - **Auto-scrolling**: Chat automatically scrolls to show the latest messages with smart pause when scrolled away
 - **Message Formatting**: Timestamps, usernames, and messages are clearly formatted with proper indentation
 
 ### Multi-Channel Management
-- **Multiple Channel Monitoring**: Monitor and manage multiple Twitch channels simultaneously
-- **Followed Channels Window**: Dedicated interface for managing your followed channels
+- **Multiple Channel Monitoring**: Monitor and manage multiple channels from both Twitch and Kick.com simultaneously
+- **Platform Selection**: Choose between Twitch and Kick.com when adding new channels
+- **Platform Display**: Clear platform indicators in channel management interface
+- **Followed Channels Window**: Dedicated interface for managing your followed channels across both platforms
 - **Individual Channel Control**: Enable/disable logging per channel, view connection status and statistics
-- **Channel Database Management**: Each channel maintains its own SQLite database for message history
+- **Channel Database Management**: Each channel maintains its own SQLite database for message history with platform metadata
 - **Background Connection Management**: Channels can be monitored in the background with automatic reconnection
 
 ### User Interaction & Navigation
@@ -38,7 +41,8 @@ A native Windows application built with C# and WPF that connects to Twitch IRC t
 - **Responsive Text Layout**: Proper text wrapping and hanging indentation for multi-line messages
 
 ### Data Persistence & Search
-- **SQLite Database Storage**: All messages are stored locally in SQLite databases per channel
+- **SQLite Database Storage**: All messages are stored locally in SQLite databases per channel with platform metadata
+- **Platform-Aware Database Management**: Each database stores platform information for proper channel identification
 - **Message Search Capabilities**: Search through user message history with advanced filtering
 - **Database Size Monitoring**: Track storage usage for each channel's message database
 - **Message Statistics**: View message counts, last activity times, and user participation stats
@@ -48,6 +52,25 @@ A native Windows application built with C# and WPF that connects to Twitch IRC t
 - **Connection Status Indicators**: Real-time status updates for each channel (Online/Offline/Connecting)
 - **Resize-Safe Message Handling**: Messages are queued during window resizing to prevent UI freezing
 - **Error Handling & Diagnostics**: Comprehensive error reporting and diagnostic tools
+
+## Platform Support
+
+### Twitch
+- **Anonymous Connection**: Connect to any Twitch channel without authentication
+- **Full IRC Support**: Uses standard Twitch IRC protocol for reliable message delivery
+- **Real-time Updates**: Instant message display with proper formatting
+
+### Kick.com
+- **Guest Connection**: Connect to any Kick.com channel as a guest user
+- **WebSocket Integration**: Uses Kick's unofficial API for real-time chat access
+- **Automatic Chatroom Discovery**: Automatically resolves channel names to chatroom IDs
+- **Full Feature Parity**: All chat viewing, logging, and user management features work identically
+
+### Platform Management
+- **Unified Interface**: Single application manages both Twitch and Kick channels
+- **Platform Indicators**: Clear visual indicators show which platform each channel uses
+- **Database Isolation**: Each platform's channels are stored in separate databases with platform metadata
+- **Legacy Support**: Existing Twitch-only databases are automatically detected and migrated
 
 ## Installation
 
@@ -117,18 +140,45 @@ The executable will be created in `bin\Release\net8.0-windows\win-x64\publish\`
 
 ### Multi-Channel Management
 1. **Access Followed Channels**: Go to Options → Followed Channels
-2. **Add Channels**: Enter channel names to monitor multiple channels simultaneously
-3. **Toggle Logging**: Enable/disable message logging per channel using checkboxes
-4. **Switch Channels**: Use "View in Main" to switch the main window to a specific channel
-5. **Remove Channels**: Select channels and click "Erase Selected" to remove them
+2. **Select Platform**: Choose between Twitch and Kick.com from the platform dropdown
+3. **Add Channels**: Enter channel names to monitor multiple channels simultaneously
+4. **Platform Indicators**: The platform column shows which service each channel uses
+5. **Toggle Logging**: Enable/disable message logging per channel using checkboxes
+6. **Switch Channels**: Use "View in Main" to switch the main window to a specific channel
+7. **Remove Channels**: Select channels and click "Erase Selected" to remove them
+
+### Platform-Specific Usage
+
+#### Adding Twitch Channels
+1. Select "Twitch" from the platform dropdown
+2. Enter the channel name (without the # symbol)
+3. Click "Add" to start monitoring
+
+#### Adding Kick.com Channels
+1. Select "Kick" from the platform dropdown
+2. Enter the channel name (exact case-sensitive username)
+3. Click "Add" to start monitoring
+4. **Note**: Kick channels may take a few extra seconds to connect as the system resolves the chatroom ID
 
 ### User Interaction Features
 - **Click Usernames**: Click any username in chat to view that user's complete message history
 - **Click @Mentions**: Click on @mentions (highlighted in orange) to view mentioned user's messages
-- **Search Users**: Use File → Lookup Users to search for users across all channels
-- **Manage Filters**: Use File → User Filters to block unwanted users from chat and logging
 
-### Font and Display Controls
+### Database Migration Tool
+- **Legacy Database Support**: Built-in tool to migrate existing Twitch-only databases to the new multi-platform format
+- **Automatic Detection**: Scans all database files and identifies which ones need migration
+- **Platform Metadata**: Adds platform information to legacy databases (defaults to Twitch for existing databases)
+- **Batch Migration**: Migrate all databases at once with detailed progress reporting
+- **Safe Migration**: Non-destructive process that preserves all existing data
+
+#### Using the Migration Tool
+1. **Access the Tool**: Go to File → Database Migration Tool
+2. **Scan Databases**: Click "Scan Databases" to check which databases need migration
+3. **Review Results**: View the status of each database and which platform it's configured for
+4. **Migrate**: Click "Migrate All" to update all databases that need migration
+5. **Verification**: The tool will report successful migrations and any errors encountered
+
+### Advanced Features
 - **Menu Font Scaling**: Use View → Font Scaling to choose preset sizes (50%-200%)
 - **Ctrl+Scroll Zooming**: Hold Ctrl and scroll mouse wheel to dynamically adjust font size
 - **Auto-Scroll Management**: Chat auto-scrolls to new messages; scroll up to pause, then use the "Scroll to Top" button to resume
@@ -161,6 +211,21 @@ The application connects to Twitch's IRC servers using:
 - **Server**: `irc.chat.twitch.tv`
 - **Port**: `6667`
 - **Authentication**: Anonymous (no OAuth required for reading chat)
+
+### Kick.com Connection
+
+The application connects to Kick.com using:
+- **API**: Unofficial Kick.com API for chatroom discovery
+- **WebSocket**: Real-time chat connection via WebSocket
+- **Authentication**: Guest connection (no credentials required for reading chat)
+
+### Database Structure
+
+Each channel database includes:
+- **messages table**: Stores chat messages with timestamps, usernames, and content
+- **metadata table**: Stores platform information and other database metadata
+- **Platform Detection**: Databases are automatically identified by platform metadata, not filename
+- **Migration Support**: Legacy databases are automatically upgraded to include platform metadata
 
 ## Troubleshooting
 
@@ -195,6 +260,17 @@ The application connects to Twitch's IRC servers using:
    - All settings are stored in `appsettings.json` in the application directory
    - If settings become corrupted, delete `appsettings.json` and restart the application to reset to defaults
    - The application will automatically recreate the configuration file with default settings
+
+7. **Platform-Specific Issues**:
+   - **Kick.com channels**: May take longer to connect as the system resolves chatroom IDs
+   - **Platform Detection**: If databases show "Unknown" platform, use the Database Migration Tool
+   - **Mixed Platform Support**: Each database is independent and can be different platforms
+   - **Legacy Database**: Existing databases will be detected as Twitch until migrated
+
+8. **Migration Tool Issues**:
+   - If migration fails, check that database files are not in use by other applications
+   - Migration is non-destructive and can be safely retried
+   - Contact support if databases become corrupted during migration
 
 ## Development
 

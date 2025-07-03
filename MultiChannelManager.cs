@@ -201,16 +201,24 @@ namespace TwitchChatViewer
                 
                 _logger.LogInformation("Discovering channels from existing database files...");
                 
-                var discoveredChannels = DiscoverChannelsFromDatabases();
-                  foreach (var channelName in discoveredChannels)
+                var discoveredChannels = await DiscoverChannelsFromDatabasesAsync();
+                  foreach (var (channelName, platform) in discoveredChannels)
                 {
-                    _logger.LogInformation("Processing discovered channel: {Channel}", channelName);
+                    _logger.LogInformation("Processing discovered channel: {Channel} ({Platform})", channelName, platform);
                     
                     // Ensure the channel exists in settings
                     _settingsManager.EnsureChannelExists(channelName);
                     
-                    // Get the platform and logging preference from settings
-                    var platform = _configService.GetChannelPlatform(channelName);
+                    // Use platform from database metadata instead of config default
+                    // Store in config if not already there
+                    var configPlatform = _configService.GetChannelPlatform(channelName);
+                    if (configPlatform != platform)
+                    {
+                        _logger.LogInformation("Updating platform in config for channel {Channel}: {OldPlatform} -> {NewPlatform}", 
+                            channelName, configPlatform, platform);
+                        await _configService.SetChannelPlatformAsync(channelName, platform);
+                    }
+                    
                     var loggingEnabled = _settingsManager.GetLoggingEnabled(channelName);
 
                     if (loggingEnabled)
@@ -238,9 +246,9 @@ namespace TwitchChatViewer
             {
                 _logger.LogError(ex, "Error loading discovered channels");
             }
-        }private List<string> DiscoverChannelsFromDatabases()
+        }private async Task<List<(string ChannelName, Platform Platform)>> DiscoverChannelsFromDatabasesAsync()
         {
-            var channels = new List<string>();
+            var channels = new List<(string ChannelName, Platform Platform)>();
             
             try
             {
@@ -279,8 +287,10 @@ namespace TwitchChatViewer
                     var fileName = Path.GetFileNameWithoutExtension(dbFile);
                     if (!string.IsNullOrEmpty(fileName))
                     {
-                        channels.Add(fileName);
-                        _logger.LogInformation("Discovered channel from database: {Channel} (from file: {File})", fileName, dbFile);
+                        // Get platform information from database metadata
+                        var platform = await ChatDatabaseService.GetPlatformByPathAsync(fileName, _logger);
+                        channels.Add((fileName, platform));
+                        _logger.LogInformation("Discovered channel from database: {Channel} ({Platform}) (from file: {File})", fileName, platform, dbFile);
                     }
                 }}
             catch (Exception ex)
@@ -289,7 +299,7 @@ namespace TwitchChatViewer
             }
             
             _logger.LogInformation("Discovery complete. Found {Count} channels: {Channels}", 
-                channels.Count, string.Join(", ", channels));
+                channels.Count, string.Join(", ", channels.Select(c => $"{c.ChannelName}({c.Platform})")));
             return channels;
         }
 
@@ -388,6 +398,12 @@ namespace TwitchChatViewer
                 await database.InitializeDatabaseAsync(normalizedChannel);
                 _databases[normalizedChannel] = database;
                 _logger.LogInformation("✓ Step 3: Successfully initialized database for: {Channel}", normalizedChannel);
+
+                // Step 3.5: Store platform metadata in database
+                currentStep = "Storing platform metadata";
+                _logger.LogInformation("Step 3.5: {Step} for channel: {Channel}", currentStep, normalizedChannel);
+                await database.SetPlatformAsync(platform);
+                _logger.LogInformation("✓ Step 3.5: Stored platform metadata ({Platform}) for: {Channel}", platform, normalizedChannel);
 
                 // Step 4: Update database size
                 currentStep = "Reading database size";

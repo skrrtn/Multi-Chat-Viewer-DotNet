@@ -226,6 +226,23 @@ namespace TwitchChatViewer
             }
         }
 
+        private void DatabaseMigrationMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var migrationWindow = new DatabaseMigrationWindow
+                {
+                    Owner = this
+                };
+                migrationWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error opening Database Migration window");
+                System.Windows.MessageBox.Show($"Error opening Database Migration window: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
         {
             ExitApplication();

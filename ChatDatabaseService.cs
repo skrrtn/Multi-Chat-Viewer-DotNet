@@ -107,6 +107,10 @@ namespace TwitchChatViewer
                 // Create table if it doesn't exist
                 _logger.LogDebug("Creating/verifying chat messages table");
                 await CreateTableAsync();
+                
+                // Create metadata table if it doesn't exist
+                _logger.LogDebug("Creating/verifying metadata table");
+                await CreateMetadataTableAsync();
 
                 _logger.LogInformation("✅ Database initialized successfully for channel: {Channel}", channelName);
             }
@@ -143,6 +147,23 @@ namespace TwitchChatViewer
             await command.ExecuteNonQueryAsync();
             
             _logger.LogDebug("Chat messages table created/verified");
+        }
+
+        private async Task CreateMetadataTableAsync()
+        {
+            var createMetadataTableSql = @"
+                CREATE TABLE IF NOT EXISTS channel_metadata (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key TEXT NOT NULL UNIQUE,
+                    value TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )";
+
+            using var command = new SqliteCommand(createMetadataTableSql, _connection);
+            await command.ExecuteNonQueryAsync();
+            
+            _logger.LogDebug("Channel metadata table created/verified");
         }
 
         public async Task LogMessageAsync(ChatMessage chatMessage)
@@ -441,6 +462,127 @@ namespace TwitchChatViewer
         public void Dispose()
         {
             CloseConnectionAsync().Wait(TimeSpan.FromSeconds(2));
+        }
+
+        public async Task SetPlatformAsync(Platform platform)
+        {
+            if (_connection == null || _connection.State != System.Data.ConnectionState.Open)
+            {
+                _logger.LogWarning("Database connection not available, cannot set platform");
+                return;
+            }
+
+            try
+            {
+                var upsertSql = @"
+                    INSERT INTO channel_metadata (key, value, updated_at)
+                    VALUES ('platform', @platform, CURRENT_TIMESTAMP)
+                    ON CONFLICT(key) DO UPDATE SET 
+                        value = @platform,
+                        updated_at = CURRENT_TIMESTAMP";
+
+                using var command = new SqliteCommand(upsertSql, _connection);
+                command.Parameters.AddWithValue("@platform", platform.ToString());
+
+                await command.ExecuteNonQueryAsync();
+                
+                _logger.LogDebug("Set platform metadata to: {Platform}", platform);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to set platform metadata: {Platform}", platform);
+            }
+        }
+
+        public async Task<Platform> GetPlatformAsync()
+        {
+            if (_connection == null || _connection.State != System.Data.ConnectionState.Open)
+            {
+                _logger.LogWarning("Database connection not available, returning default platform (Twitch)");
+                return Platform.Twitch;
+            }
+
+            try
+            {
+                var selectSql = @"
+                    SELECT value FROM channel_metadata WHERE key = 'platform' LIMIT 1";
+
+                using var command = new SqliteCommand(selectSql, _connection);
+                var result = await command.ExecuteScalarAsync();
+
+                if (result != null && Enum.TryParse<Platform>(result.ToString(), out var platform))
+                {
+                    _logger.LogDebug("Retrieved platform metadata: {Platform}", platform);
+                    return platform;
+                }
+                else
+                {
+                    _logger.LogDebug("No platform metadata found, defaulting to Twitch");
+                    return Platform.Twitch;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get platform metadata, defaulting to Twitch");
+                return Platform.Twitch;
+            }
+        }
+
+        public static async Task<Platform> GetPlatformByPathAsync(string channelName, ILogger logger = null)
+        {
+            try
+            {
+                var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
+                var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                
+                if (!File.Exists(dbPath))
+                {
+                    logger?.LogDebug("Database file not found for channel {Channel}, defaulting to Twitch", channelName);
+                    return Platform.Twitch;
+                }
+
+                var connectionString = $"Data Source={dbPath};";
+                using var connection = new SqliteConnection(connectionString);
+                await connection.OpenAsync();
+
+                // Check if metadata table exists
+                var checkTableSql = @"
+                    SELECT COUNT(*)
+                    FROM sqlite_master 
+                    WHERE type='table' AND name='channel_metadata'";
+
+                using var checkCommand = new SqliteCommand(checkTableSql, connection);
+                var tableExists = Convert.ToInt32(await checkCommand.ExecuteScalarAsync()) > 0;
+
+                if (!tableExists)
+                {
+                    logger?.LogDebug("Metadata table not found for channel {Channel}, defaulting to Twitch", channelName);
+                    return Platform.Twitch;
+                }
+
+                // Get platform metadata
+                var selectSql = @"
+                    SELECT value FROM channel_metadata WHERE key = 'platform' LIMIT 1";
+
+                using var command = new SqliteCommand(selectSql, connection);
+                var result = await command.ExecuteScalarAsync();
+
+                if (result != null && Enum.TryParse<Platform>(result.ToString(), out var platform))
+                {
+                    logger?.LogDebug("Retrieved platform {Platform} for channel {Channel}", platform, channelName);
+                    return platform;
+                }
+                else
+                {
+                    logger?.LogDebug("No platform metadata found for channel {Channel}, defaulting to Twitch", channelName);
+                    return Platform.Twitch;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Failed to get platform for channel {Channel}, defaulting to Twitch", channelName);
+                return Platform.Twitch;
+            }
         }
     }
 }

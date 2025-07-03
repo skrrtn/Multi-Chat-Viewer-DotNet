@@ -282,6 +282,8 @@
                 <MenuItem Header="_Filter Users" Click="UserFiltersMenuItem_Click"/>
                 <MenuItem Header="_Lookup Users" Click="LookupUsersMenuItem_Click"/>
                 <Separator/>
+                <MenuItem Header="_Database Migration Tool" Click="DatabaseMigrationMenuItem_Click"/>
+                <Separator/>
                 <MenuItem Header="_About" Click="AboutMenuItem_Click"/>
                 <MenuItem Header="_Exit" Click="ExitMenuItem_Click"/>
             </MenuItem>
