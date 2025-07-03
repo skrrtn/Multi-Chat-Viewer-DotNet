@@ -7,19 +7,19 @@
     <ApplicationIcon>logo.ico</ApplicationIcon>
     
     <!-- Assembly Information -->
-    <AssemblyTitle>Twitch Chat Viewer</AssemblyTitle>
-    <AssemblyProduct>Twitch Chat Viewer</AssemblyProduct>
+    <AssemblyTitle>Multi Chat Viewer</AssemblyTitle>
+    <AssemblyProduct>Multi Chat Viewer</AssemblyProduct>
     <AssemblyCompany>SKRRTN</AssemblyCompany>
-    <AssemblyDescription>A modern WPF application for viewing Twitch chat in real-time with advanced features like message filtering, user lookup, and multi-channel support.</AssemblyDescription>
+    <AssemblyDescription>A modern WPF application for viewing Twitch and Kick chat in real-time with advanced features like message filtering, user lookup, and multi-channel support across platforms.</AssemblyDescription>
     <AssemblyCopyright>Copyright © SKRRTN 2025</AssemblyCopyright>
     <AssemblyVersion>1.3.0</AssemblyVersion>
     <FileVersion>1.3.0</FileVersion>
     
     <!-- Additional Properties -->
     <Authors>SKRRTN</Authors>
-    <Product>Twitch Chat Viewer</Product>
-    <Title>Twitch Chat Viewer</Title>
-    <Description>A modern WPF application for viewing Twitch chat in real-time with advanced features like message filtering, user lookup, and multi-channel support.</Description>
+    <Product>Multi Chat Viewer</Product>
+    <Title>Multi Chat Viewer</Title>
+    <Description>A modern WPF application for viewing Twitch and Kick chat in real-time with advanced features like message filtering, user lookup, and multi-channel support across platforms.</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="KickLib" Version="1.4.3" />

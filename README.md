@@ -1,6 +1,6 @@
-# Twitch Chat Viewer
+# Multi Chat Viewer
 
-A native Windows application built with C# and WPF that connects to Twitch IRC and Kick.com chat to display real-time chat messages from both platforms.
+A native Windows application built with C# and WPF that connects to Twitch IRC and Kick.com chat to display real-time chat messages from both platforms with advanced multi-platform support.
 
 ![Screenshot](screenshot.png)
 
@@ -164,19 +164,12 @@ The executable will be created in `bin\Release\net8.0-windows\win-x64\publish\`
 - **Click Usernames**: Click any username in chat to view that user's complete message history
 - **Click @Mentions**: Click on @mentions (highlighted in orange) to view mentioned user's messages
 
-### Database Migration Tool
-- **Legacy Database Support**: Built-in tool to migrate existing Twitch-only databases to the new multi-platform format
-- **Automatic Detection**: Scans all database files and identifies which ones need migration
+### Automatic Database Migration
+- **Legacy Database Support**: Built-in automatic migration for existing Twitch-only databases to the new multi-platform format
+- **Seamless Migration**: Automatically detects and migrates legacy databases on application startup
 - **Platform Metadata**: Adds platform information to legacy databases (defaults to Twitch for existing databases)
-- **Batch Migration**: Migrate all databases at once with detailed progress reporting
-- **Safe Migration**: Non-destructive process that preserves all existing data
-
-#### Using the Migration Tool
-1. **Access the Tool**: Go to File → Database Migration Tool
-2. **Scan Databases**: Click "Scan Databases" to check which databases need migration
-3. **Review Results**: View the status of each database and which platform it's configured for
-4. **Migrate**: Click "Migrate All" to update all databases that need migration
-5. **Verification**: The tool will report successful migrations and any errors encountered
+- **Safe Migration**: Non-destructive process that preserves all existing data and removes old files after successful migration
+- **No User Action Required**: Migration happens automatically - no manual intervention needed
 
 ### Advanced Features
 - **Menu Font Scaling**: Use View → Font Scaling to choose preset sizes (50%-200%)
@@ -263,14 +256,14 @@ Each channel database includes:
 
 7. **Platform-Specific Issues**:
    - **Kick.com channels**: May take longer to connect as the system resolves chatroom IDs
-   - **Platform Detection**: If databases show "Unknown" platform, use the Database Migration Tool
+   - **Platform Detection**: If databases show "Unknown" platform, they will be automatically migrated to the proper format
    - **Mixed Platform Support**: Each database is independent and can be different platforms
-   - **Legacy Database**: Existing databases will be detected as Twitch until migrated
+   - **Legacy Database**: Existing databases will be automatically migrated to the new format on startup
 
-8. **Migration Tool Issues**:
-   - If migration fails, check that database files are not in use by other applications
-   - Migration is non-destructive and can be safely retried
-   - Contact support if databases become corrupted during migration
+8. **Migration Issues**:
+   - If automatic migration fails, check that database files are not in use by other applications
+   - Migration is non-destructive and will be retried on next startup if needed
+   - Check application logs for detailed migration error information
 
 ## Development
 
