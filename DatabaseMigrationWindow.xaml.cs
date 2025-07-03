@@ -5,24 +5,34 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace TwitchChatViewer
 {
     public partial class DatabaseMigrationWindow : Window
     {
         private readonly DatabaseMigrationHelper _migrationHelper;
-        private readonly ObservableCollection<DatabaseInfoViewModel> _databases = new();
+        private readonly ObservableCollection<DatabaseInfoViewModel> _databases = [];
 
         public DatabaseMigrationWindow()
         {
             InitializeComponent();
             
+            // Enable dark mode title bar
+            DarkModeHelper.EnableDarkMode(this);
+            
             var dbDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "db");
             _migrationHelper = new DatabaseMigrationHelper(dbDirectory);
-            
-            DatabaseGrid.ItemsSource = _databases;
-            
+
+            // Set up DataGrid binding
+            if (FindName("DatabaseGrid") is DataGrid databaseGrid)
+            {
+                databaseGrid.ItemsSource = _databases;
+            }
+
             // Auto-scan on startup
             _ = ScanDatabasesAsync();
         }
@@ -46,9 +56,13 @@ namespace TwitchChatViewer
         {
             try
             {
-                ScanButton.IsEnabled = false;
-                MigrateButton.IsEnabled = false;
-                StatusText.Text = "Scanning databases...";
+                // Get controls by name
+                var migrateButton = FindName("MigrateButton") as Button;
+                var statusText = FindName("StatusText") as TextBlock;
+                
+                if (FindName("ScanButton") is Button scanButton) scanButton.IsEnabled = false;
+                if (migrateButton != null) migrateButton.IsEnabled = false;
+                if (statusText != null) statusText.Text = "Scanning databases...";
                 Mouse.OverrideCursor = Cursors.Wait;
 
                 _databases.Clear();
@@ -57,7 +71,7 @@ namespace TwitchChatViewer
                 var dbDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "db");
                 if (!Directory.Exists(dbDirectory))
                 {
-                    StatusText.Text = "No database directory found. No databases to migrate.";
+                    if (statusText != null) statusText.Text = "No database directory found. No databases to migrate.";
                     return;
                 }
 
@@ -65,7 +79,7 @@ namespace TwitchChatViewer
                 
                 if (databaseInfos.Count == 0)
                 {
-                    StatusText.Text = "No database files found.";
+                    if (statusText != null) statusText.Text = "No database files found.";
                     return;
                 }
                 
@@ -90,23 +104,23 @@ namespace TwitchChatViewer
                 
                 if (needsMigration > 0)
                 {
-                    StatusText.Text = $"Found {needsMigration} database(s) that need migration out of {total} total.";
-                    MigrateButton.IsEnabled = true;
+                    if (statusText != null) statusText.Text = $"Found {needsMigration} database(s) that need migration out of {total} total.";
+                    if (migrateButton != null) migrateButton.IsEnabled = true;
                 }
                 else
                 {
-                    StatusText.Text = $"All {total} database(s) are up to date.";
-                    MigrateButton.IsEnabled = false;
+                    if (statusText != null) statusText.Text = $"All {total} database(s) are up to date.";
+                    if (migrateButton != null) migrateButton.IsEnabled = false;
                 }
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Error scanning databases: {ex.Message}";
+                if (FindName("StatusText") is TextBlock statusText) statusText.Text = $"Error scanning databases: {ex.Message}";
                 MessageBox.Show($"Error scanning databases:\n\n{ex.Message}", "Scan Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
-                ScanButton.IsEnabled = true;
+                if (FindName("ScanButton") is Button scanButton) scanButton.IsEnabled = true;
                 Mouse.OverrideCursor = null;
             }
         }
@@ -115,9 +129,11 @@ namespace TwitchChatViewer
         {
             try
             {
-                ScanButton.IsEnabled = false;
-                MigrateButton.IsEnabled = false;
-                StatusText.Text = "Migrating databases...";
+                // Get controls by name
+
+                if (FindName("ScanButton") is Button scanButton) scanButton.IsEnabled = false;
+                if (FindName("MigrateButton") is Button migrateButton) migrateButton.IsEnabled = false;
+                if (FindName("StatusText") is TextBlock statusText) statusText.Text = "Migrating databases...";
                 Mouse.OverrideCursor = Cursors.Wait;
 
                 var result = await _migrationHelper.MigrateAllDatabasesAsync();
@@ -125,7 +141,7 @@ namespace TwitchChatViewer
                 if (result.HasErrors)
                 {
                     var errorMessage = result.ErrorMessage;
-                    if (result.FailedDatabases.Any())
+                    if (result.FailedDatabases.Count > 0)
                     {
                         errorMessage += "\n\nFailed databases:\n" + 
                                         string.Join("\n", result.FailedDatabases.Select(kv => $"- {kv.Key}: {kv.Value}"));
@@ -154,12 +170,12 @@ namespace TwitchChatViewer
             }
             finally
             {
-                ScanButton.IsEnabled = true;
+                if (FindName("ScanButton") is Button scanButton) scanButton.IsEnabled = true;
                 Mouse.OverrideCursor = null;
             }
         }
 
-        private string GetStatusText(DatabaseInfo info)
+        private static string GetStatusText(DatabaseInfo info)
         {
             if (!string.IsNullOrEmpty(info.ErrorMessage))
             {
@@ -174,7 +190,7 @@ namespace TwitchChatViewer
             return "Up to Date";
         }
 
-        private string FormatFileSize(long bytes)
+        private static string FormatFileSize(long bytes)
         {
             if (bytes < 1024)
                 return $"{bytes} B";
