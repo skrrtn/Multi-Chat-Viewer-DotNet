@@ -55,10 +55,10 @@
                            Foreground="White" 
                            Margin="0,0,0,10"/>
                 <TextBlock Margin="0,0,0,15">
-                    <Hyperlink NavigateUri="https://github.com/skrrtn/Twitch-Chat-Viewer-DotNet" 
+                    <Hyperlink NavigateUri="https://github.com/skrrtn/Multi-Chat-Viewer-DotNet" 
                                RequestNavigate="Hyperlink_RequestNavigate"
                                Foreground="#4a90e2">
-                        <Run Text="https://github.com/skrrtn/Twitch-Chat-Viewer-DotNet"/>
+                        <Run Text="https://github.com/skrrtn/Multi-Chat-Viewer-DotNet"/>
                     </Hyperlink>
                 </TextBlock>
                   <TextBlock Text="Support the Developer" 

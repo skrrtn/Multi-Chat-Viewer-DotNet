@@ -12,17 +12,11 @@ namespace TwitchChatViewer
         public string ClientSecret { get; set; } = string.Empty;
     }
 
-    public class KickCredentialsService
+    public class KickCredentialsService(ILogger<KickCredentialsService> logger, UnifiedConfigurationService configService)
     {
-        private readonly ILogger<KickCredentialsService> _logger;
-        private readonly UnifiedConfigurationService _configService;
+        private readonly ILogger<KickCredentialsService> _logger = logger;
+        private readonly UnifiedConfigurationService _configService = configService;
         private KickCredentials _cachedCredentials;
-
-        public KickCredentialsService(ILogger<KickCredentialsService> logger, UnifiedConfigurationService configService)
-        {
-            _logger = logger;
-            _configService = configService;
-        }
 
         public async Task<KickCredentials> GetCredentialsAsync()
         {

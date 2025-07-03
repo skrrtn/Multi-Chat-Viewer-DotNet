@@ -308,7 +308,7 @@ namespace TwitchChatViewer
         {
             lock (_lock)
             {
-                return _config.BlacklistedUsers.OrderBy(u => u).ToList();
+                return [.. _config.BlacklistedUsers.OrderBy(u => u)];
             }
         }
 

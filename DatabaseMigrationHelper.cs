@@ -11,14 +11,9 @@ namespace TwitchChatViewer
     /// <summary>
     /// Helper class for migrating legacy databases to include platform metadata
     /// </summary>
-    public class DatabaseMigrationHelper
+    public class DatabaseMigrationHelper(string dbDirectory)
     {
-        private readonly string _dbDirectory;
-
-        public DatabaseMigrationHelper(string dbDirectory)
-        {
-            _dbDirectory = dbDirectory;
-        }
+        private readonly string _dbDirectory = dbDirectory;
 
         /// <summary>
         /// Migrates all databases in the db directory to include platform metadata
@@ -65,7 +60,7 @@ namespace TwitchChatViewer
         /// <summary>
         /// Checks if a database needs migration (lacks platform metadata)
         /// </summary>
-        private async Task<bool> CheckIfMigrationNeededAsync(string dbPath)
+        private static async Task<bool> CheckIfMigrationNeededAsync(string dbPath)
         {
             try
             {
@@ -97,7 +92,7 @@ namespace TwitchChatViewer
         /// <summary>
         /// Migrates a single database to include platform metadata
         /// </summary>
-        private async Task MigrateDatabaseAsync(string dbPath)
+        private static async Task MigrateDatabaseAsync(string dbPath)
         {
             using var connection = new SqliteConnection($"Data Source={dbPath}");
             await connection.OpenAsync();
@@ -125,7 +120,7 @@ namespace TwitchChatViewer
         /// <summary>
         /// Gets platform information from a database file
         /// </summary>
-        private async Task<Platform?> GetPlatformFromDatabaseAsync(string dbPath)
+        private static async Task<Platform?> GetPlatformFromDatabaseAsync(string dbPath)
         {
             try
             {
@@ -134,9 +129,8 @@ namespace TwitchChatViewer
 
                 var command = connection.CreateCommand();
                 command.CommandText = "SELECT value FROM metadata WHERE key = 'platform';";
-                var result = await command.ExecuteScalarAsync() as string;
 
-                if (result != null && Enum.TryParse<Platform>(result, out var platform))
+                if (await command.ExecuteScalarAsync() is string result && Enum.TryParse<Platform>(result, out var platform))
                 {
                     return platform;
                 }
@@ -212,13 +206,13 @@ namespace TwitchChatViewer
     /// </summary>
     public class MigrationResult
     {
-        public List<string> MigratedDatabases { get; set; } = new List<string>();
-        public List<string> AlreadyMigratedDatabases { get; set; } = new List<string>();
-        public Dictionary<string, string> FailedDatabases { get; set; } = new Dictionary<string, string>();
+        public List<string> MigratedDatabases { get; set; } = [];
+        public List<string> AlreadyMigratedDatabases { get; set; } = [];
+        public Dictionary<string, string> FailedDatabases { get; set; } = [];
         public string ErrorMessage { get; set; } = string.Empty;
 
-        public bool HasErrors => !string.IsNullOrEmpty(ErrorMessage) || FailedDatabases.Any();
-        public bool HasChanges => MigratedDatabases.Any();
+        public bool HasErrors => !string.IsNullOrEmpty(ErrorMessage) || FailedDatabases.Count != 0;
+        public bool HasChanges => MigratedDatabases.Count != 0;
         public int TotalDatabases => MigratedDatabases.Count + AlreadyMigratedDatabases.Count + FailedDatabases.Count;
     }
 

@@ -11,16 +11,10 @@ namespace TwitchChatViewer
         public DateTime LastModified { get; set; } = DateTime.Now;
     }
 
-    public class ChannelSettingsManager
+    public class ChannelSettingsManager(ILogger<ChannelSettingsManager> logger, UnifiedConfigurationService configService)
     {
-        private readonly ILogger<ChannelSettingsManager> _logger;
-        private readonly UnifiedConfigurationService _configService;
-
-        public ChannelSettingsManager(ILogger<ChannelSettingsManager> logger, UnifiedConfigurationService configService)
-        {
-            _logger = logger;
-            _configService = configService;
-        }
+        private readonly ILogger<ChannelSettingsManager> _logger = logger;
+        private readonly UnifiedConfigurationService _configService = configService;
 
         public async Task LoadSettingsAsync()
         {

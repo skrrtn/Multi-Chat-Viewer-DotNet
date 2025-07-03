@@ -14,7 +14,7 @@ namespace TwitchChatViewer
     {
         private readonly ILogger<KickChatClient> _logger;
         private IKickClient _kickClient;
-        private KickUnofficialApi _kickUnofficialApi;
+        private readonly KickUnofficialApi _kickUnofficialApi;
         private string _currentChannel;
         private bool _isConnected = false;
         private int _chatroomId;

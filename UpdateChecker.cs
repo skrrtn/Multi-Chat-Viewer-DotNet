@@ -8,8 +8,8 @@ namespace TwitchChatViewer
 {
     public static partial class UpdateChecker
     {
-        private const string LatestReleaseApiUrl = "https://api.github.com/repos/skrrtn/Twitch-Chat-Viewer-DotNet/releases/latest";
-        private const string ReleasesPageUrl = "https://github.com/skrrtn/Twitch-Chat-Viewer-DotNet/releases";
+        private const string LatestReleaseApiUrl = "https://api.github.com/repos/skrrtn/Multi-Chat-Viewer-DotNet/releases/latest";
+        private const string ReleasesPageUrl = "https://github.com/skrrtn/Multi-Chat-Viewer-DotNet/releases";
 
         public static async Task<UpdateCheckResult> CheckForUpdateAsync()
         {
