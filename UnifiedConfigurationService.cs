@@ -15,11 +15,19 @@ namespace TwitchChatViewer
         public List<string> BlacklistedUsers { get; set; } = [];
         public string ConfigVersion { get; set; } = "1.0";
         public DateTime LastSaved { get; set; } = DateTime.Now;
+        public KickConfig Kick { get; set; } = new();
     }
 
     public class ChannelConfig
     {
         public bool LoggingEnabled { get; set; } = true;
+        public Platform Platform { get; set; } = Platform.Twitch;
+    }
+
+    public class KickConfig
+    {
+        public string EncryptedClientId { get; set; } = string.Empty;
+        public string EncryptedClientSecret { get; set; } = string.Empty;
     }
 
     public class UnifiedConfigurationService
@@ -360,7 +368,8 @@ namespace TwitchChatViewer
                     {
                         _config.Channels[kvp.Key] = new ChannelConfig
                         {
-                            LoggingEnabled = kvp.Value.LoggingEnabled
+                            LoggingEnabled = kvp.Value.LoggingEnabled,
+                            Platform = Platform.Twitch // Default old channels to Twitch
                         };
                         _channelLastModified[kvp.Key] = kvp.Value.LastModified;
                     }
@@ -420,6 +429,82 @@ namespace TwitchChatViewer
         private class UserFiltersData
         {
             public List<string> BlacklistedUsers { get; set; } = [];
+        }
+
+        #endregion
+
+        #region Kick Credentials
+
+        public Task<string> GetKickClientIdAsync()
+        {
+            lock (_lock)
+            {
+                return Task.FromResult(_config.Kick.EncryptedClientId);
+            }
+        }
+
+        public Task<string> GetKickClientSecretAsync()
+        {
+            lock (_lock)
+            {
+                return Task.FromResult(_config.Kick.EncryptedClientSecret);
+            }
+        }
+
+        public async Task SetKickClientIdAsync(string encryptedClientId)
+        {
+            lock (_lock)
+            {
+                _config.Kick.EncryptedClientId = encryptedClientId;
+            }
+            await SaveConfigurationAsync();
+        }
+
+        public async Task SetKickClientSecretAsync(string encryptedClientSecret)
+        {
+            lock (_lock)
+            {
+                _config.Kick.EncryptedClientSecret = encryptedClientSecret;
+            }
+            await SaveConfigurationAsync();
+        }
+
+        #endregion
+
+        #region Channel Platform Support
+
+        public Platform GetChannelPlatform(string channelName)
+        {
+            var normalizedChannel = channelName.ToLower();
+            lock (_lock)
+            {
+                if (_config.Channels.TryGetValue(normalizedChannel, out var channelConfig))
+                {
+                    return channelConfig.Platform;
+                }
+            }
+            
+            // Default to Twitch for existing channels
+            return Platform.Twitch;
+        }
+
+        public async Task SetChannelPlatformAsync(string channelName, Platform platform)
+        {
+            var normalizedChannel = channelName.ToLower();
+            
+            lock (_lock)
+            {
+                if (!_config.Channels.TryGetValue(normalizedChannel, out var channelConfig))
+                {
+                    channelConfig = new ChannelConfig();
+                    _config.Channels[normalizedChannel] = channelConfig;
+                }
+                
+                channelConfig.Platform = platform;
+            }
+
+            await SaveConfigurationAsync();
+            _logger.LogInformation("Updated platform for channel {Channel}: {Platform}", channelName, platform);
         }
 
         #endregion

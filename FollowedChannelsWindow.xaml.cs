@@ -18,7 +18,7 @@ namespace TwitchChatViewer
         private readonly DispatcherTimer _updateTimer;
         
         public ObservableCollection<FollowedChannel> FollowedChannels { get; } = [];
-        public event EventHandler<string> SwitchToChannelRequested;        public FollowedChannelsWindow(MultiChannelManager channelManager, ILogger<FollowedChannelsWindow> logger)
+        public event EventHandler<FollowedChannel> SwitchToChannelRequested;        public FollowedChannelsWindow(MultiChannelManager channelManager, ILogger<FollowedChannelsWindow> logger)
         {
             InitializeComponent();
             DataContext = this;
@@ -90,18 +90,30 @@ namespace TwitchChatViewer
                 return;
             }
 
+            // Get selected platform
+            var selectedPlatform = Platform.Twitch; // Default
+            if (PlatformComboBox.SelectedItem is ComboBoxItem selectedItem)
+            {
+                if (Enum.TryParse<Platform>(selectedItem.Tag?.ToString(), out var platform))
+                {
+                    selectedPlatform = platform;
+                }
+            }
+
             try
             {
-                UpdateStatus($"Adding channel: {channelName}...");
-                  // First check if channel already exists
+                UpdateStatus($"Adding {selectedPlatform} channel: {channelName}...");
+                  // First check if channel already exists on this platform
                 var normalizedChannel = channelName.ToLower().Replace("#", "");
                 var existingChannels = _channelManager.GetFollowedChannels();
-                var existingChannel = existingChannels.FirstOrDefault(c => c.Name.Equals(normalizedChannel, StringComparison.OrdinalIgnoreCase));
+                var existingChannel = existingChannels.FirstOrDefault(c => 
+                    c.Name.Equals(normalizedChannel, StringComparison.OrdinalIgnoreCase) && 
+                    c.Platform == selectedPlatform);
                 
                 if (existingChannel != null)
                 {
-                    UpdateStatus($"Channel {channelName} is already being followed");
-                    MessageBox.Show($"Channel '{channelName}' is already being followed.", 
+                    UpdateStatus($"{selectedPlatform} channel {channelName} is already being followed");
+                    MessageBox.Show($"{selectedPlatform} channel '{channelName}' is already being followed.", 
                                    "Channel Already Added", MessageBoxButton.OK, MessageBoxImage.Information);
                     
                     // Refresh the UI to make sure it shows up
@@ -112,13 +124,14 @@ namespace TwitchChatViewer
                     
                     ChannelNameTextBox.Clear();
                     return;
-                }                _logger.LogInformation("Attempting to add new channel: {Channel}", normalizedChannel);                try
+                }                _logger.LogInformation("Attempting to add new {Platform} channel: {Channel}", selectedPlatform, normalizedChannel);                try
                 {
-                    var result = await _channelManager.AddChannelWithDetailsAsync(channelName);
-                      if (result.Success)
+                    var result = await _channelManager.AddChannelAsync(channelName, selectedPlatform);
+                      if (result)
                     {
                         var followedChannel = _channelManager.GetFollowedChannels()
-                            .FirstOrDefault(c => c.Name.Equals(normalizedChannel, StringComparison.OrdinalIgnoreCase));
+                            .FirstOrDefault(c => c.Name.Equals(normalizedChannel, StringComparison.OrdinalIgnoreCase) && 
+                                                c.Platform == selectedPlatform);
                         
                         if (followedChannel != null && !FollowedChannels.Contains(followedChannel))
                         {
@@ -130,11 +143,11 @@ namespace TwitchChatViewer
                         // Check if the channel connected successfully or is in retry mode
                         if (followedChannel?.IsConnected == true)
                         {
-                            UpdateStatus($"Successfully added and connected to channel: {channelName}");
+                            UpdateStatus($"Successfully added and connected to {selectedPlatform} channel: {channelName}");
                         }
                         else
                         {
-                            UpdateStatus($"Added channel: {channelName} (connecting in background)");
+                            UpdateStatus($"Added {selectedPlatform} channel: {channelName} (connecting in background)");
                             
                             // Try to reconnect after a short delay
                             _ = Task.Run(async () =>
@@ -144,100 +157,58 @@ namespace TwitchChatViewer
                             });
                         }
                         
-                        _logger.LogInformation("Successfully added channel: {Channel}", normalizedChannel);
+                        _logger.LogInformation("Successfully added {Platform} channel: {Channel}", selectedPlatform, normalizedChannel);
                     }                    else
                     {
                         UpdateStatus($"Failed to add channel: {channelName}");
-                        _logger.LogWarning("Failed to add channel: {Channel}. Step: {Step}, Error: {Error}", 
-                            normalizedChannel, result.FailedStep, result.ErrorMessage);
-                        
-                        // Check if channel was actually added despite returning false (race condition or already exists)
-                        var recheckChannels = _channelManager.GetFollowedChannels();
-                        var recheckExisting = recheckChannels.FirstOrDefault(c => c.Name.Equals(normalizedChannel, StringComparison.OrdinalIgnoreCase));
-                        
-                        if (recheckExisting != null)
-                        {
-                            // Channel exists - probably was already added
-                            if (!FollowedChannels.Contains(recheckExisting))
-                            {
-                                FollowedChannels.Add(recheckExisting);
-                            }
-                            ChannelNameTextBox.Clear();
-                            UpdateStatus($"Channel {channelName} was already being followed");
-                            MessageBox.Show($"Channel '{channelName}' is already being monitored.", 
-                                           "Channel Already Added", MessageBoxButton.OK, MessageBoxImage.Information);
-                        }                        else
-                        {
-                            // Genuine failure - provide detailed error message with specific step
-                            _logger.LogInformation("Showing detailed error dialog for channel add failure: {Channel}", channelName);
-                            
-                            var errorMessage = $"Failed to add channel '{channelName}'.\n\n";
-                            errorMessage += "The system attempted the following steps:\n";
-                            errorMessage += "1. ✓ Validate channel name\n";
-                            errorMessage += "2. ✓ Create channel entry\n";
-                            errorMessage += "3. ✓ Initialize IRC client\n";
-                            errorMessage += "4. ✓ Create database\n";
-                            errorMessage += "5. ✓ Connect to Twitch IRC\n\n";
-                            
-                            // Mark the failed step
-                            errorMessage = errorMessage.Replace($"✓ {result.FailedStep}", $"❌ {result.FailedStep}");
-                            
-                            errorMessage += $"❌ FAILED AT: {result.FailedStep}\n";
-                            if (!string.IsNullOrEmpty(result.ErrorMessage))
-                            {
-                                errorMessage += $"📋 Error Details: {result.ErrorMessage}\n\n";
-                            }
-                            
-                            errorMessage += "Common causes:\n";
-                            
-                            // Provide specific troubleshooting based on failed step
-                            switch (result.FailedStep?.ToLower())
-                            {
-                                case "validating channel on twitch":
-                                case "validation":
-                                    errorMessage += "• Channel name does not exist on Twitch\n";
-                                    errorMessage += "• Check spelling and ensure the channel exists\n";
-                                    break;
-                                case "creating channel entry":
-                                    errorMessage += "• Internal application error\n";
-                                    errorMessage += "• Try restarting the application\n";
-                                    break;
-                                case "creating irc client":
-                                case "initialize irc client":
-                                    errorMessage += "• IRC client initialization failed\n";
-                                    errorMessage += "• Check available memory and restart app\n";
-                                    break;
-                                case "initializing database":
-                                    errorMessage += "• Database creation failed\n";
-                                    errorMessage += "• Check disk space and folder permissions\n";
-                                    errorMessage += "• Ensure the 'db' folder is writable\n";
-                                    break;
-                                case "connecting to irc":
-                                    errorMessage += "• Network connection problems\n";
-                                    errorMessage += "• Twitch IRC server issues\n";
-                                    errorMessage += "• Firewall blocking connections\n";
-                                    break;
-                                default:
-                                    errorMessage += "• Network connection problems\n";
-                                    errorMessage += "• Twitch IRC server issues\n";
-                                    errorMessage += "• Database permission problems\n";
-                                    errorMessage += "• Insufficient disk space\n";
-                                    break;
-                            }
-                            
-                            errorMessage += "\n💡 Try again in a few moments, or check if the channel exists on Twitch.";
-                            
-                            MessageBox.Show(errorMessage, "Add Channel Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        }
+                        _logger.LogWarning("Failed to add channel: {Channel} (unknown error)", normalizedChannel);
+                        MessageBox.Show($"Failed to add channel '{channelName}'. Please check the channel name and your connection, then try again.",
+                            "Add Channel Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
                     }
                 }
                 catch (Exception addEx)
                 {
                     _logger.LogError(addEx, "Exception occurred while adding channel: {Channel}", normalizedChannel);
                     UpdateStatus($"Error adding channel: {channelName}");
-                    MessageBox.Show($"An error occurred while adding channel '{channelName}':\n\n{addEx.Message}\n\n" +
-                                   $"Please check your connection and try again.", 
-                                   "Add Channel Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    
+                    // Provide more specific error messages for Kick channels
+                    string errorMessage;
+                    if (selectedPlatform == Platform.Kick)
+                    {
+                        if (addEx.Message.Contains("credentials"))
+                        {
+                            errorMessage = $"Failed to add Kick channel '{channelName}':\n\n" +
+                                         $"Kick credentials are required. Please provide valid OAuth Client ID and Secret.\n\n" +
+                                         $"To get these credentials:\n" +
+                                         $"1. Go to https://kick.com/developer/applications\n" +
+                                         $"2. Create a new application\n" +
+                                         $"3. Copy the Client ID and Client Secret\n\n" +
+                                         $"Error details: {addEx.Message}";
+                        }
+                        else if (addEx.Message.Contains("not found"))
+                        {
+                            errorMessage = $"Failed to add Kick channel '{channelName}':\n\n" +
+                                         $"The channel '{channelName}' was not found on Kick.com.\n" +
+                                         $"Please check that:\n" +
+                                         $"• The channel name is spelled correctly\n" +
+                                         $"• The channel exists on Kick.com\n" +
+                                         $"• The channel is not private or restricted\n\n" +
+                                         $"Error details: {addEx.Message}";
+                        }
+                        else
+                        {
+                            errorMessage = $"Failed to add Kick channel '{channelName}':\n\n" +
+                                         $"{addEx.Message}\n\n" +
+                                         $"Please check your Kick OAuth credentials and internet connection.";
+                        }
+                    }
+                    else
+                    {
+                        errorMessage = $"An error occurred while adding channel '{channelName}':\n\n{addEx.Message}\n\n" +
+                                     $"Please check your connection and try again.";
+                    }
+                    
+                    MessageBox.Show(errorMessage, "Add Channel Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
@@ -322,7 +293,7 @@ namespace TwitchChatViewer
         {
             if (sender is Button button && button.DataContext is FollowedChannel selectedChannel)
             {
-                SwitchToChannelRequested?.Invoke(this, selectedChannel.Name);
+                SwitchToChannelRequested?.Invoke(this, selectedChannel);
                 UpdateStatus($"Switching main window to channel: {selectedChannel.Name}");
             }
         }        private async void LoggingCheckBox_Click(object sender, RoutedEventArgs e)

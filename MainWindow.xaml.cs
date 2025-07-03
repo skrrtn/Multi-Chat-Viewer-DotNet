@@ -27,6 +27,7 @@ namespace TwitchChatViewer
         private bool _isConnected;
         private string _statusMessage = "No followed channels";
         private string _currentChannel;
+        private Platform _currentChannelPlatform = Platform.Twitch;
         private int _currentChannelMessageCount;        private string _currentChannelDatabaseSize = "0 B";
         private double _chatFontSize = 12.0; // Default font size matches BaseFontSize
         private readonly System.Windows.Threading.DispatcherTimer _statusUpdateTimer = new();
@@ -67,6 +68,17 @@ namespace TwitchChatViewer
             {
                 _currentChannel = value;
                 OnPropertyChanged(nameof(CurrentChannel));
+                UpdateWindowTitle();
+            }
+        }
+
+        public Platform CurrentChannelPlatform
+        {
+            get => _currentChannelPlatform;
+            set
+            {
+                _currentChannelPlatform = value;
+                OnPropertyChanged(nameof(CurrentChannelPlatform));
                 UpdateWindowTitle();
             }
         }
@@ -343,10 +355,13 @@ namespace TwitchChatViewer
                 var errorWindow = new ErrorWindow(errorDetails);
                 errorWindow.ShowDialog();
             }
-        }        private async void OnSwitchToChannelRequested(object sender, string channelName)
+        }        private async void OnSwitchToChannelRequested(object sender, FollowedChannel followedChannel)
         {
             try
             {
+                var channelName = followedChannel.Name;
+                var platform = followedChannel.Platform;
+                
                 // Disconnect from current channel if connected
                 if (IsConnected)
                 {
@@ -362,15 +377,16 @@ namespace TwitchChatViewer
                 _isAutoScrollEnabled = true;
                 ScrollToTopButtonVisible = false;
 
-                // Set current channel
+                // Set current channel and platform
                 CurrentChannel = channelName;
+                CurrentChannelPlatform = platform;
 
                 // Ensure this channel is being followed for background logging
                 var followedChannels = _multiChannelManager.GetFollowedChannels();
-                var existingChannel = followedChannels.FirstOrDefault(c => c.Name.Equals(channelName, StringComparison.OrdinalIgnoreCase));                if (existingChannel == null)
+                var existingChannel = followedChannels.FirstOrDefault(c => c.Name.Equals(channelName, StringComparison.OrdinalIgnoreCase) && c.Platform == platform);                if (existingChannel == null)
                 {
                     _logger.LogInformation("Adding channel {Channel} to followed channels for background logging", channelName);
-                    var success = await _multiChannelManager.AddChannelAsync(channelName, true); // Enable logging
+                    var success = await _multiChannelManager.AddChannelAsync(channelName, platform, true); // Enable logging
                     if (!success)
                     {
                         _logger.LogWarning("Failed to add channel {Channel} for background logging", channelName);
@@ -401,7 +417,7 @@ namespace TwitchChatViewer
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error switching to channel: {Channel}", channelName);
+                _logger.LogError(ex, "Error switching to channel: {Channel}", followedChannel?.Name ?? "unknown");
             }
         }        private void ClearButton_Click(object sender, RoutedEventArgs e)
         {
@@ -734,11 +750,12 @@ namespace TwitchChatViewer
         {
             if (string.IsNullOrEmpty(CurrentChannel))
             {
-                Title = "Twitch Chat Viewer";
+                Title = "Multi-Platform Chat Viewer";
             }
             else
             {
-                Title = $"Twitch Chat Viewer - #{CurrentChannel}";
+                var platformName = CurrentChannelPlatform.ToString();
+                Title = $"Multi-Platform Chat Viewer - {platformName} #{CurrentChannel}";
             }
         }        protected override void OnClosing(CancelEventArgs e)
         {

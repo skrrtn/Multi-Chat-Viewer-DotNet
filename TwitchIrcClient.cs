@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace TwitchChatViewer
 {
-    public class TwitchIrcClient
+    public class TwitchIrcClient : IChatClient
     {
         private readonly ILogger<TwitchIrcClient> _logger;
         private TcpClient _tcpClient;
@@ -27,6 +27,7 @@ namespace TwitchChatViewer
         public event EventHandler<string> Error;
 
         public string CurrentChannel => _currentChannel;
+        public bool IsConnected => _tcpClient?.Connected == true;
 
         public TwitchIrcClient(ILogger<TwitchIrcClient> logger)
         {

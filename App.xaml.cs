@@ -74,7 +74,11 @@ namespace TwitchChatViewer
             // Register the unified configuration service first
             services.AddSingleton<UnifiedConfigurationService>();
 
+            // Register chat clients
             services.AddSingleton<TwitchIrcClient>();
+            services.AddSingleton<KickChatClient>();
+            services.AddSingleton<KickCredentialsService>();
+            
             services.AddSingleton<ChatDatabaseService>();
             services.AddSingleton<ChannelSettingsManager>();
             services.AddSingleton<FollowedChannelsStorage>();

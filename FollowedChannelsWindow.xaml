@@ -160,9 +160,10 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-        </Grid.RowDefinitions><!-- Header with Add Channel -->
+        </Grid.RowDefinitions>        <!-- Header with Add Channel -->
         <Grid Grid.Row="0" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -171,7 +172,18 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock Grid.Column="0" Text="Add Channel:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <TextBox Grid.Column="1" x:Name="ChannelNameTextBox" 
+            <ComboBox Grid.Column="1" x:Name="PlatformComboBox" 
+                      VerticalAlignment="Center" 
+                      Width="100" 
+                      Margin="0,0,10,0"
+                      Background="#2d2d30"
+                      Foreground="White"
+                      BorderBrush="#3c3c3c"
+                      BorderThickness="1">
+                <ComboBoxItem Content="Twitch" Tag="Twitch" IsSelected="True"/>
+                <ComboBoxItem Content="Kick" Tag="Kick"/>
+            </ComboBox>
+            <TextBox Grid.Column="2" x:Name="ChannelNameTextBox" 
                      VerticalAlignment="Center" 
                      KeyDown="ChannelNameTextBox_KeyDown"
                      Background="#2d2d30"
@@ -179,12 +191,12 @@
                      BorderBrush="#3c3c3c"
                      BorderThickness="1"
                      Padding="5"/>
-            <Button Grid.Column="2" Content="Add" Click="AddChannelButton_Click" 
+            <Button Grid.Column="3" Content="Add" Click="AddChannelButton_Click" 
                     Width="120" Height="35" Margin="5,0" Padding="8,6"
-                    Background="#007ACC" Foreground="White" BorderBrush="#005a9e"/>            <Button Grid.Column="3" Content="Erase Selected" Click="EraseSelectedButton_Click" 
+                    Background="#007ACC" Foreground="White" BorderBrush="#005a9e"/>            <Button Grid.Column="4" Content="Erase Selected" Click="EraseSelectedButton_Click" 
                     Width="120" Height="35" Margin="5,0" Padding="8,6"
                     Background="#d73502" Foreground="White" BorderBrush="#a02a02"/>
-            <Button Grid.Column="4" Content="Remove Selected" Click="RemoveChannelButton_Click" 
+            <Button Grid.Column="5" Content="Remove Selected" Click="RemoveChannelButton_Click" 
                     Width="120" Height="35" Margin="5,0" Padding="8,6"
                     Background="#d73502" Foreground="White" BorderBrush="#a02a02"/>
         </Grid><!-- Channels List -->
@@ -243,6 +255,8 @@
                 </DataGridTemplateColumn>
                 
                 <DataGridTextColumn Header="Channel" Binding="{Binding Name}" Width="120" IsReadOnly="True"/>
+                
+                <DataGridTextColumn Header="Platform" Binding="{Binding PlatformName}" Width="80" IsReadOnly="True"/>
                 
                 <DataGridTemplateColumn Header="Logging" Width="80">
                     <DataGridTemplateColumn.CellTemplate>
