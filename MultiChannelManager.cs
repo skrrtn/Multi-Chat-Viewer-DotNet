@@ -189,6 +189,39 @@ namespace TwitchChatViewer
         public event EventHandler<string> ChannelRemoved;
         public event EventHandler<(string Channel, string Error)> ChannelError;        public event EventHandler<(string Channel, bool LoggingEnabled)> ChannelLoggingChanged;
 
+        // Generate unique key for channel storage using both name and platform
+        private static string GenerateChannelKey(string channelName, Platform platform)
+        {
+            var normalizedChannel = channelName.ToLower().Replace("#", "");
+            return $"{normalizedChannel}_{platform}";
+        }
+
+        // Extract channel name from a channel key
+        private static string ExtractChannelName(string channelKey)
+        {
+            var lastUnderscoreIndex = channelKey.LastIndexOf('_');
+            if (lastUnderscoreIndex > 0)
+            {
+                return channelKey.Substring(0, lastUnderscoreIndex);
+            }
+            return channelKey; // Fallback for legacy keys
+        }
+
+        // Extract platform from a channel key
+        private static Platform ExtractPlatform(string channelKey)
+        {
+            var lastUnderscoreIndex = channelKey.LastIndexOf('_');
+            if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < channelKey.Length - 1)
+            {
+                var platformString = channelKey.Substring(lastUnderscoreIndex + 1);
+                if (Enum.TryParse<Platform>(platformString, true, out var platform))
+                {
+                    return platform;
+                }
+            }
+            return Platform.Twitch; // Fallback for legacy keys
+        }
+
         public List<FollowedChannel> GetFollowedChannels()
         {
             return [.. _followedChannels.Values];
@@ -306,10 +339,11 @@ namespace TwitchChatViewer
         public async Task<bool> AddChannelAsync(string channelName, Platform platform, bool? loggingEnabled = null)
         {
             var normalizedChannel = channelName.ToLower().Replace("#", "");
+            var channelKey = GenerateChannelKey(normalizedChannel, platform);
             
-            if (_followedChannels.ContainsKey(normalizedChannel))
+            if (_followedChannels.ContainsKey(channelKey))
             {
-                _logger.LogWarning("Channel {Channel} is already being followed", normalizedChannel);
+                _logger.LogWarning("Channel {Channel} on {Platform} is already being followed", normalizedChannel, platform);
                 return false; // This will be handled better in the UI layer
             }
 
@@ -353,7 +387,7 @@ namespace TwitchChatViewer
                     Status = "Adding...",
                     LoggingEnabled = loggingEnabled ?? _settingsManager.GetLoggingEnabled(normalizedChannel)
                 };
-                _followedChannels[normalizedChannel] = followedChannel;
+                _followedChannels[channelKey] = followedChannel;
                 
                 // Store platform in config
                 await _configService.SetChannelPlatformAsync(normalizedChannel, platform);
@@ -367,10 +401,10 @@ namespace TwitchChatViewer
                 if (platform == Platform.Twitch)
                 {
                     var twitchClient = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>());
-                    twitchClient.MessageReceived += (sender, message) => OnClientMessageReceived(normalizedChannel, message);
-                    twitchClient.Connected += (sender, channel) => OnClientConnected(normalizedChannel);
-                    twitchClient.Disconnected += (sender, args) => OnClientDisconnected(normalizedChannel);
-                    twitchClient.Error += (sender, error) => OnClientError(normalizedChannel, error);
+                    twitchClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
+                    twitchClient.Connected += (sender, channel) => OnClientConnected(channelKey);
+                    twitchClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
+                    twitchClient.Error += (sender, error) => OnClientError(channelKey, error);
                     client = twitchClient;
                 }
                 else if (platform == Platform.Kick)
@@ -379,16 +413,16 @@ namespace TwitchChatViewer
                     
                     // Create Kick client (credentials are optional for reading public chat)
                     var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>());
-                    kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(normalizedChannel, message);
-                    kickClient.Connected += (sender, channel) => OnClientConnected(normalizedChannel);
-                    kickClient.Disconnected += (sender, args) => OnClientDisconnected(normalizedChannel);
-                    kickClient.Error += (sender, error) => OnClientError(normalizedChannel, error);
+                    kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
+                    kickClient.Connected += (sender, channel) => OnClientConnected(channelKey);
+                    kickClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
+                    kickClient.Error += (sender, error) => OnClientError(channelKey, error);
                     client = kickClient;
                     
                     _logger.LogInformation("Kick client created successfully for channel: {Channel}", normalizedChannel);
                 }
                 
-                _clients[normalizedChannel] = client;
+                _clients[channelKey] = client;
                 _logger.LogInformation("✓ Step 2: Successfully created {Platform} client for: {Channel}", platform, normalizedChannel);
 
                 // Step 3: Create and initialize database
@@ -396,7 +430,7 @@ namespace TwitchChatViewer
                 _logger.LogInformation("Step 3: {Step} for channel: {Channel}", currentStep, normalizedChannel);
                 database = new ChatDatabaseService(_loggerFactory.CreateLogger<ChatDatabaseService>());
                 await database.InitializeDatabaseAsync(normalizedChannel, platform);
-                _databases[normalizedChannel] = database;
+                _databases[channelKey] = database;
                 _logger.LogInformation("✓ Step 3: Successfully initialized database for: {Channel}", normalizedChannel);
 
                 // Step 3.5: Store platform metadata in database
@@ -538,15 +572,28 @@ namespace TwitchChatViewer
 
             try
             {
+                // Find the channel to get its platform and generate the correct key
+                var channelToRemove = _followedChannels.Values.FirstOrDefault(c => 
+                    c.Name.Equals(normalizedChannel, StringComparison.OrdinalIgnoreCase));
+                
+                if (channelToRemove == null)
+                {
+                    _logger.LogWarning("Channel {Channel} not found in followed channels", normalizedChannel);
+                    return false;
+                }
+
+                var platform = channelToRemove.Platform;
+                var channelKey = GenerateChannelKey(normalizedChannel, platform);
+
                 // Disconnect and dispose IRC client
-                if (_clients.TryRemove(normalizedChannel, out var client))
+                if (_clients.TryRemove(channelKey, out var client))
                 {
                     await client.DisconnectAsync();
                     client.Dispose();
                 }
 
                 // Close database connection
-                if (_databases.TryRemove(normalizedChannel, out var database))
+                if (_databases.TryRemove(channelKey, out var database))
                 {
                     await database.CloseConnectionAsync();
                     database.Dispose();
@@ -560,16 +607,9 @@ namespace TwitchChatViewer
                 // Clear SQLite connection pools before deletion
                 Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
-                // Get platform information before deleting
-                var platform = Platform.Twitch; // Default fallback
-                if (_followedChannels.TryGetValue(normalizedChannel, out var channelInfo))
-                {
-                    platform = channelInfo.Platform;
-                }
-
                 // Delete the database file completely
                 await ChatDatabaseService.DeleteDatabaseForChannelAsync(normalizedChannel, platform, _logger);                // Remove from followed channels
-                _followedChannels.TryRemove(normalizedChannel, out _);
+                _followedChannels.TryRemove(channelKey, out _);
 
                 // Remove from storage
                 await _followedChannelsStorage.RemoveChannelAsync(normalizedChannel);
@@ -606,37 +646,38 @@ namespace TwitchChatViewer
             
             _databases.Clear();
             _logger.LogInformation("Disconnected all channels and closed database connections for app shutdown");
-        }private async void OnClientMessageReceived(string channel, ChatMessage message)
+        }        private async void OnClientMessageReceived(string channelKey, ChatMessage message)
         {
             try
             {
                 // Check if user is blacklisted - filter out both from display AND database logging
                 if (_userFilterService.IsUserBlacklisted(message.Username))
                 {
-                    _logger.LogDebug("Filtered out message from blacklisted user {Username} on channel {Channel}", message.Username, channel);
+                    _logger.LogDebug("Filtered out message from blacklisted user {Username} on channel {Channel}", message.Username, channelKey);
                     return; // Don't process the message further
                 }
 
                 // Log to database only if logging is enabled for this channel
-                if (_followedChannels.TryGetValue(channel, out var followedChannel))
+                if (_followedChannels.TryGetValue(channelKey, out var followedChannel))
                 {
+                    var channelName = ExtractChannelName(channelKey);
                     _logger.LogDebug("Background client message received for channel {Channel}: LoggingEnabled={LoggingEnabled}, IsConnected={IsConnected}", 
-                        channel, followedChannel.LoggingEnabled, followedChannel.IsConnected);
-                      if (followedChannel.LoggingEnabled && _databases.TryGetValue(channel, out var database))
+                        channelName, followedChannel.LoggingEnabled, followedChannel.IsConnected);
+                      if (followedChannel.LoggingEnabled && _databases.TryGetValue(channelKey, out var database))
                     {
                         await database.LogMessageAsync(message);
                         _logger.LogDebug("Background client logged message for channel {Channel}: {Username} - {Message}", 
-                            channel, message.Username, message.Message);
+                            channelName, message.Username, message.Message);
                         
                         // Update database size after logging (every 10 messages to reduce overhead)
                         if (followedChannel.MessageCount % 10 == 0)
                         {
-                            followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(channel, followedChannel.Platform);
+                            followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(channelName, followedChannel.Platform);
                         }
                     }
                     else if (!followedChannel.LoggingEnabled)
                     {
-                        _logger.LogDebug("Skipping message logging for channel {Channel} - logging disabled", channel);
+                        _logger.LogDebug("Skipping message logging for channel {Channel} - logging disabled", channelName);
                     }
                     
                     // Update followed channel stats (always update stats regardless of logging preference)
@@ -645,29 +686,37 @@ namespace TwitchChatViewer
                 }
                 else
                 {
+                    var channelName = ExtractChannelName(channelKey);
                     _logger.LogWarning("Received message for unknown channel {Channel}: {Username} - {Message}", 
-                        channel, message.Username, message.Message);
+                        channelName, message.Username, message.Message);
                 }
 
                 // Notify listeners (this will notify MainWindow to display the message)
-                MessageReceived?.Invoke(this, (channel, message));
+                // Use the channel name (not the key) for the event
+                var eventChannelName = ExtractChannelName(channelKey);
+                MessageReceived?.Invoke(this, (eventChannelName, message));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing message for channel {Channel}", channel);
+                var channelName = ExtractChannelName(channelKey);
+                _logger.LogError(ex, "Error processing message for channel {Channel}", channelName);
             }
-        }private void OnClientConnected(string channel)
+        }        private void OnClientConnected(string channelKey)
         {
-            if (_followedChannels.TryGetValue(channel, out var followedChannel))
+            if (_followedChannels.TryGetValue(channelKey, out var followedChannel))
             {
                 followedChannel.IsConnected = true;
                 followedChannel.Status = "ONLINE";
             }
-            ChannelConnected?.Invoke(this, channel);
-        }        private void OnClientDisconnected(string channel)
+            var channelName = ExtractChannelName(channelKey);
+            ChannelConnected?.Invoke(this, channelName);
+        }
+
+        private void OnClientDisconnected(string channelKey)
         {
-            _logger.LogInformation("OnClientDisconnected called for channel: {Channel}", channel);
-            if (_followedChannels.TryGetValue(channel, out var followedChannel))
+            var channelName = ExtractChannelName(channelKey);
+            _logger.LogInformation("OnClientDisconnected called for channel: {Channel}", channelName);
+            if (_followedChannels.TryGetValue(channelKey, out var followedChannel))
             {
                 // Only update if it's not already marked as disconnected.
                 // This prevents overwriting a manually set "OFFLINE" status.
@@ -675,30 +724,36 @@ namespace TwitchChatViewer
                 {
                     followedChannel.IsConnected = false;
                     followedChannel.Status = "OFFLINE";
-                    _logger.LogInformation("Updated channel {Channel} status to OFFLINE in OnClientDisconnected", channel);
+                    _logger.LogInformation("Updated channel {Channel} status to OFFLINE in OnClientDisconnected", channelName);
                 }
             }
-            ChannelDisconnected?.Invoke(this, channel);
+            ChannelDisconnected?.Invoke(this, channelName);
         }
 
-        private void OnClientError(string channel, string error)
+        private void OnClientError(string channelKey, string error)
         {
-            if (_followedChannels.TryGetValue(channel, out var followedChannel))
+            if (_followedChannels.TryGetValue(channelKey, out var followedChannel))
             {
                 followedChannel.IsConnected = false;
                 followedChannel.Status = $"Error: {error}";
             }
-            ChannelError?.Invoke(this, (channel, error));
-        }        public async Task UpdateChannelLoggingAsync(string channelName, bool loggingEnabled)
+            var channelName = ExtractChannelName(channelKey);
+            ChannelError?.Invoke(this, (channelName, error));
+        }public async Task UpdateChannelLoggingAsync(string channelName, bool loggingEnabled)
         {
             var normalizedChannel = channelName.ToLower().Replace("#", "");
             
-            if (!_followedChannels.TryGetValue(normalizedChannel, out var followedChannel))
+            // Find the channel to get its platform and generate the correct key
+            var followedChannel = _followedChannels.Values.FirstOrDefault(c => 
+                c.Name.Equals(normalizedChannel, StringComparison.OrdinalIgnoreCase));
+            
+            if (followedChannel == null)
             {
                 _logger.LogWarning("Channel {Channel} not found in followed channels during logging update", normalizedChannel);
                 return;
             }
 
+            var channelKey = GenerateChannelKey(normalizedChannel, followedChannel.Platform);
             var isConnected = followedChannel.IsConnected;
 
             _logger.LogInformation("Updating logging for {Channel} to {loggingEnabled}. IsConnected: {isConnected}", 
@@ -715,7 +770,7 @@ namespace TwitchChatViewer
                 if (!isConnected)
                 {
                     _logger.LogInformation("Connecting channel {Channel} because logging was enabled.", normalizedChannel);
-                    await ConnectChannelAsync(normalizedChannel);
+                    await ConnectChannelAsync(channelKey);
                 }
             }
             // If turning logging OFF
@@ -725,7 +780,7 @@ namespace TwitchChatViewer
                 if (isConnected)
                 {
                     _logger.LogInformation("Disconnecting channel {Channel} because logging was disabled.", normalizedChannel);
-                    await DisconnectChannelAsync(normalizedChannel);
+                    await DisconnectChannelAsync(channelKey);
                 }
                 else
                 {
@@ -744,10 +799,11 @@ namespace TwitchChatViewer
         public async Task<bool> AddChannelOfflineAsync(string channelName, Platform platform = Platform.Twitch)
         {
             var normalizedChannel = channelName.ToLower().Replace("#", "");
+            var channelKey = GenerateChannelKey(normalizedChannel, platform);
             
-            if (_followedChannels.ContainsKey(normalizedChannel))
+            if (_followedChannels.ContainsKey(channelKey))
             {
-                _logger.LogWarning("Channel {Channel} is already being followed", normalizedChannel);
+                _logger.LogWarning("Channel {Channel} on {Platform} is already being followed", normalizedChannel, platform);
                 return false;
             }
 
@@ -762,13 +818,13 @@ namespace TwitchChatViewer
                     LoggingEnabled = false,
                     IsConnected = false
                 };
-                _followedChannels[normalizedChannel] = followedChannel;
+                _followedChannels[channelKey] = followedChannel;
                 
                 // Store platform in config
                 await _configService.SetChannelPlatformAsync(normalizedChannel, platform);                // Create database service (for when logging is re-enabled)
                 var database = new ChatDatabaseService(_loggerFactory.CreateLogger<ChatDatabaseService>());
                 await database.InitializeDatabaseAsync(normalizedChannel, platform);
-                _databases[normalizedChannel] = database;
+                _databases[channelKey] = database;
 
                 // Update database size
                 followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel, platform);
@@ -776,46 +832,47 @@ namespace TwitchChatViewer
                 // Load existing message count from database
                 followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel, platform);
 
-                _logger.LogInformation("Added offline channel: {Channel}", normalizedChannel);
+                _logger.LogInformation("Added offline channel: {Channel} on {Platform}", normalizedChannel, platform);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to add offline channel: {Channel}", normalizedChannel);
+                _logger.LogError(ex, "Failed to add offline channel: {Channel} on {Platform}", normalizedChannel, platform);
                 return false;
             }
         }
 
-        private async Task ConnectChannelAsync(string normalizedChannel)
+        private async Task ConnectChannelAsync(string channelKey)
         {
             try
             {
-                if (_followedChannels.TryGetValue(normalizedChannel, out var followedChannel))
+                if (_followedChannels.TryGetValue(channelKey, out var followedChannel))
                 {
                     followedChannel.Status = "Connecting...";
+                    var extractedChannelName = ExtractChannelName(channelKey);
                     
                     // Create platform-specific client if it doesn't exist
-                    if (!_clients.TryGetValue(normalizedChannel, out var existingClient))
+                    if (!_clients.TryGetValue(channelKey, out var existingClient))
                     {
                         IChatClient client;
                         
                         if (followedChannel.Platform == Platform.Twitch)
                         {
                             var twitchClient = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>());
-                            twitchClient.MessageReceived += (sender, message) => OnClientMessageReceived(normalizedChannel, message);
-                            twitchClient.Connected += (sender, channel) => OnClientConnected(normalizedChannel);
-                            twitchClient.Disconnected += (sender, args) => OnClientDisconnected(normalizedChannel);
-                            twitchClient.Error += (sender, error) => OnClientError(normalizedChannel, error);
+                            twitchClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
+                            twitchClient.Connected += (sender, channel) => OnClientConnected(channelKey);
+                            twitchClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
+                            twitchClient.Error += (sender, error) => OnClientError(channelKey, error);
                             client = twitchClient;
                         }
                         else if (followedChannel.Platform == Platform.Kick)
                         {
                             // Create Kick client (credentials optional for reading public chat)
                             var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>());
-                            kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(normalizedChannel, message);
-                            kickClient.Connected += (sender, channel) => OnClientConnected(normalizedChannel);
-                            kickClient.Disconnected += (sender, args) => OnClientDisconnected(normalizedChannel);
-                            kickClient.Error += (sender, error) => OnClientError(normalizedChannel, error);
+                            kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
+                            kickClient.Connected += (sender, channel) => OnClientConnected(channelKey);
+                            kickClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
+                            kickClient.Error += (sender, error) => OnClientError(channelKey, error);
                             client = kickClient;
                         }
                         else
@@ -823,90 +880,93 @@ namespace TwitchChatViewer
                             throw new NotSupportedException($"Platform {followedChannel.Platform} is not supported");
                         }
                         
-                        _clients[normalizedChannel] = client;
+                        _clients[channelKey] = client;
                         existingClient = client;
                     }
                     
                     // Connect to platform
-                    await existingClient.ConnectAsync(normalizedChannel);
+                    await existingClient.ConnectAsync(extractedChannelName);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to connect channel: {Channel}", normalizedChannel);
-                if (_followedChannels.TryGetValue(normalizedChannel, out var followedChannel))
+                var extractedChannelName = ExtractChannelName(channelKey);
+                _logger.LogError(ex, "Failed to connect channel: {Channel}", extractedChannelName);
+                if (_followedChannels.TryGetValue(channelKey, out var followedChannel))
                 {
                     followedChannel.Status = "Connection Failed";
                     followedChannel.IsConnected = false;
                 }
             }
-        }        private async Task DisconnectChannelAsync(string normalizedChannel)
+        }        private async Task DisconnectChannelAsync(string channelKey)
         {
             try
             {
-                _logger.LogInformation("Starting disconnect for channel: {Channel}", normalizedChannel);
+                var extractedChannelName = ExtractChannelName(channelKey);
+                _logger.LogInformation("Starting disconnect for channel: {Channel}", extractedChannelName);
                 
-                if (_followedChannels.TryGetValue(normalizedChannel, out var followedChannel))
+                if (_followedChannels.TryGetValue(channelKey, out var followedChannel))
                 {
                     // Immediately update the UI-facing properties to OFFLINE.
                     // This ensures the UI is responsive and reflects the user's action instantly.
                     followedChannel.IsConnected = false;
                     followedChannel.Status = "OFFLINE";
-                    _logger.LogInformation("Immediately set channel {Channel} status to OFFLINE.", normalizedChannel);
+                    _logger.LogInformation("Immediately set channel {Channel} status to OFFLINE.", extractedChannelName);
 
                     // Now, perform the actual disconnection and cleanup.
-                    if (_clients.TryRemove(normalizedChannel, out var client))
+                    if (_clients.TryRemove(channelKey, out var client))
                     {
-                        _logger.LogInformation("Found IRC client for channel {Channel}, disconnecting and disposing...", normalizedChannel);
+                        _logger.LogInformation("Found IRC client for channel {Channel}, disconnecting and disposing...", extractedChannelName);
                         try
                         {
                             await client.DisconnectAsync();
-                            _logger.LogInformation("DisconnectAsync completed for channel: {Channel}", normalizedChannel);
+                            _logger.LogInformation("DisconnectAsync completed for channel: {Channel}", extractedChannelName);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Error during IRC client disconnect for channel: {Channel}, will still attempt to dispose.", normalizedChannel);
+                            _logger.LogError(ex, "Error during IRC client disconnect for channel: {Channel}, will still attempt to dispose.", extractedChannelName);
                         }
                         finally
                         {
                             try
                             {
                                 client.Dispose();
-                                _logger.LogInformation("IRC client disposed for channel: {Channel}", normalizedChannel);
+                                _logger.LogInformation("IRC client disposed for channel: {Channel}", extractedChannelName);
                             }
                             catch (Exception disposeEx)
                             {
-                                _logger.LogError(disposeEx, "Error during IRC client dispose for channel: {Channel}", normalizedChannel);
+                                _logger.LogError(disposeEx, "Error during IRC client dispose for channel: {Channel}", extractedChannelName);
                             }
                         }
                     }
                     else
                     {
-                        _logger.LogWarning("No active IRC client found for channel {Channel} during disconnect.", normalizedChannel);
+                        _logger.LogWarning("No active IRC client found for channel {Channel} during disconnect.", extractedChannelName);
                     }
 
                     // Notify other parts of the application that this channel is now disconnected.
-                    ChannelDisconnected?.Invoke(this, normalizedChannel);
-                    _logger.LogInformation("Fired ChannelDisconnected event for channel: {Channel}", normalizedChannel);
+                    ChannelDisconnected?.Invoke(this, extractedChannelName);
+                    _logger.LogInformation("Fired ChannelDisconnected event for channel: {Channel}", extractedChannelName);
                 }
                 else
                 {
-                    _logger.LogWarning("Channel {Channel} not found in followed channels during disconnect", normalizedChannel);
+                    _logger.LogWarning("Channel {Channel} not found in followed channels during disconnect", extractedChannelName);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to disconnect channel: {Channel}", normalizedChannel);
+                var extractedChannelName = ExtractChannelName(channelKey);
+                _logger.LogError(ex, "Failed to disconnect channel: {Channel}", extractedChannelName);
                 
                 // Even if disconnect failed, ensure the channel is marked as offline
-                if (_followedChannels.TryGetValue(normalizedChannel, out var followedChannel))
+                if (_followedChannels.TryGetValue(channelKey, out var followedChannel))
                 {
                     if (followedChannel.IsConnected || followedChannel.Status != "OFFLINE")
                     {
                         followedChannel.IsConnected = false;
                         followedChannel.Status = "OFFLINE";
-                        ChannelDisconnected?.Invoke(this, normalizedChannel);
-                        _logger.LogInformation("Forced channel {Channel} to OFFLINE state after disconnect error", normalizedChannel);
+                        ChannelDisconnected?.Invoke(this, extractedChannelName);
+                        _logger.LogInformation("Forced channel {Channel} to OFFLINE state after disconnect error", extractedChannelName);
                     }
                 }
             }
@@ -950,10 +1010,21 @@ namespace TwitchChatViewer
         {
             var normalizedChannel = channelName.ToLower().Replace("#", "");
             
-            if (!_followedChannels.TryGetValue(normalizedChannel, out var followedChannel) || 
-                !_clients.TryGetValue(normalizedChannel, out var client))
+            // Find the channel to get its platform and generate the correct key
+            var followedChannel = _followedChannels.Values.FirstOrDefault(c => 
+                c.Name.Equals(normalizedChannel, StringComparison.OrdinalIgnoreCase));
+            
+            if (followedChannel == null)
             {
                 _logger.LogWarning("Cannot retry connection for {Channel} - channel not found", normalizedChannel);
+                return;
+            }
+
+            var channelKey = GenerateChannelKey(normalizedChannel, followedChannel.Platform);
+            
+            if (!_clients.TryGetValue(channelKey, out var client))
+            {
+                _logger.LogWarning("Cannot retry connection for {Channel} - client not found", normalizedChannel);
                 return;
             }
 
@@ -1098,44 +1169,48 @@ namespace TwitchChatViewer
             public Exception Exception { get; set; }
         }
 
-        public async Task<ChannelAddResult> AddChannelWithDetailsAsync(string channelName, bool? loggingEnabled = null)
+        public async Task<ChannelAddResult> AddChannelWithDetailsAsync(string channelName, Platform platform = Platform.Twitch, bool? loggingEnabled = null)
         {
             var normalizedChannel = channelName.ToLower().Replace("#", "");
+            var channelKey = GenerateChannelKey(normalizedChannel, platform);
             
-            if (_followedChannels.ContainsKey(normalizedChannel))
+            if (_followedChannels.ContainsKey(channelKey))
             {
-                _logger.LogWarning("Channel {Channel} is already being followed", normalizedChannel);
+                _logger.LogWarning("Channel {Channel} on {Platform} is already being followed", normalizedChannel, platform);
                 return new ChannelAddResult 
                 { 
                     Success = false, 
-                    ErrorMessage = "Channel is already being followed",
+                    ErrorMessage = $"Channel is already being followed on {platform}",
                     FailedStep = "Validation"
                 };
             }
 
             FollowedChannel followedChannel = null;
-            TwitchIrcClient client = null;
+            IChatClient client = null;
             ChatDatabaseService database = null;
             string currentStep = "Initialization";
 
             try
             {
-                _logger.LogInformation("🚀 Starting to add channel: {Channel}", normalizedChannel);
+                _logger.LogInformation("🚀 Starting to add channel: {Channel} on {Platform}", normalizedChannel, platform);
                 
-                // Step 0: Validate channel exists on Twitch
-                currentStep = "Validating channel on Twitch";
-                _logger.LogInformation("Step 0: {Step} for channel: {Channel}", currentStep, normalizedChannel);
-                var isValidChannel = await IsValidTwitchChannelAsync(normalizedChannel);
-                if (!isValidChannel)
+                // Step 0: Validate channel exists
+                if (platform == Platform.Twitch)
                 {
-                    var errorMsg = $"Channel '{normalizedChannel}' does not appear to exist on Twitch. Please check the channel name and try again.";
-                    _logger.LogWarning("❌ Channel validation failed: {Channel} does not appear to exist on Twitch", normalizedChannel);
-                    return new ChannelAddResult 
-                    { 
-                        Success = false, 
-                        ErrorMessage = errorMsg,
-                        FailedStep = currentStep
-                    };
+                    currentStep = "Validating channel on Twitch";
+                    _logger.LogInformation("Step 0: {Step} for channel: {Channel}", currentStep, normalizedChannel);
+                    var isValidChannel = await IsValidTwitchChannelAsync(normalizedChannel);
+                    if (!isValidChannel)
+                    {
+                        var errorMsg = $"Channel '{normalizedChannel}' does not appear to exist on Twitch. Please check the channel name and try again.";
+                        _logger.LogWarning("❌ Channel validation failed: {Channel} does not appear to exist on Twitch", normalizedChannel);
+                        return new ChannelAddResult 
+                        { 
+                            Success = false, 
+                            ErrorMessage = errorMsg,
+                            FailedStep = currentStep
+                        };
+                    }
                 }
                 _logger.LogInformation("✓ Step 0: Channel {Channel} validated successfully", normalizedChannel);
                 
@@ -1145,57 +1220,77 @@ namespace TwitchChatViewer
                 followedChannel = new FollowedChannel
                 {
                     Name = normalizedChannel,
+                    Platform = platform,
                     Status = "Adding...",
                     LoggingEnabled = loggingEnabled ?? _settingsManager.GetLoggingEnabled(normalizedChannel)
                 };
-                _followedChannels[normalizedChannel] = followedChannel;
+                _followedChannels[channelKey] = followedChannel;
                 _logger.LogInformation("✓ Step 1: Successfully created followed channel entry for: {Channel}", normalizedChannel);
 
-                // Step 2: Create IRC client
-                currentStep = "Creating IRC client";
+                // Step 2: Create platform-specific client
+                currentStep = $"Creating {platform} client";
                 _logger.LogInformation("Step 2: {Step} for channel: {Channel}", currentStep, normalizedChannel);
-                client = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>());
-                client.MessageReceived += (sender, message) => OnClientMessageReceived(normalizedChannel, message);
-                client.Connected += (sender, channel) => OnClientConnected(normalizedChannel);
-                client.Disconnected += (sender, args) => OnClientDisconnected(normalizedChannel);
-                client.Error += (sender, error) => OnClientError(normalizedChannel, error);
-                _clients[normalizedChannel] = client;
-                _logger.LogInformation("✓ Step 2: Successfully created IRC client for: {Channel}", normalizedChannel);
+                
+                if (platform == Platform.Twitch)
+                {
+                    var twitchClient = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>());
+                    twitchClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
+                    twitchClient.Connected += (sender, channel) => OnClientConnected(channelKey);
+                    twitchClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
+                    twitchClient.Error += (sender, error) => OnClientError(channelKey, error);
+                    client = twitchClient;
+                }
+                else if (platform == Platform.Kick)
+                {
+                    var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>());
+                    kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
+                    kickClient.Connected += (sender, channel) => OnClientConnected(channelKey);
+                    kickClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
+                    kickClient.Error += (sender, error) => OnClientError(channelKey, error);
+                    client = kickClient;
+                }
+                else
+                {
+                    throw new NotSupportedException($"Platform {platform} is not supported");
+                }
+                
+                _clients[channelKey] = client;
+                _logger.LogInformation("✓ Step 2: Successfully created {Platform} client for: {Channel}", platform, normalizedChannel);
 
                 // Step 3: Create and initialize database
                 currentStep = "Initializing database";
                 _logger.LogInformation("Step 3: {Step} for channel: {Channel}", currentStep, normalizedChannel);
                 database = new ChatDatabaseService(_loggerFactory.CreateLogger<ChatDatabaseService>());
-                await database.InitializeDatabaseAsync(normalizedChannel, Platform.Twitch);
-                _databases[normalizedChannel] = database;
+                await database.InitializeDatabaseAsync(normalizedChannel, platform);
+                _databases[channelKey] = database;
                 _logger.LogInformation("✓ Step 3: Successfully initialized database for: {Channel}", normalizedChannel);                // Step 4: Update database size
                 currentStep = "Reading database size";
                 _logger.LogInformation("Step 4: {Step} for channel: {Channel}", currentStep, normalizedChannel);
-                followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel, Platform.Twitch);
+                followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel, platform);
                 _logger.LogInformation("✓ Step 4: Database size calculated for: {Channel} ({Size} bytes)", normalizedChannel, followedChannel.DatabaseSize);
 
                 // Step 4.5: Load existing message count from database
                 currentStep = "Loading existing message count";
                 _logger.LogInformation("Step 4.5: {Step} for channel: {Channel}", currentStep, normalizedChannel);
-                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel, Platform.Twitch);
+                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel, platform);
                 _logger.LogInformation("✓ Step 4.5: Loaded existing message count for: {Channel} ({Count} messages)", normalizedChannel, followedChannel.MessageCount);
 
-                // Step 5: Connect to IRC
-                currentStep = "Connecting to IRC";
-                followedChannel.Status = "Connecting to IRC...";
+                // Step 5: Connect to platform
+                currentStep = $"Connecting to {platform}";
+                followedChannel.Status = $"Connecting to {platform}...";
                 _logger.LogInformation("Step 5: {Step} for channel: {Channel}", currentStep, normalizedChannel);
                 
                 try
                 {
                     await client.ConnectAsync(normalizedChannel);
-                    _logger.LogInformation("✓ Step 5: Successfully connected to IRC for: {Channel}", normalizedChannel);
+                    _logger.LogInformation("✓ Step 5: Successfully connected to {Platform} for: {Channel}", platform, normalizedChannel);
                     followedChannel.Status = "ONLINE";
                     followedChannel.IsConnected = true;
                 }
                 catch (Exception connectEx)
                 {
-                    _logger.LogWarning(connectEx, "⚠ Step 5: IRC connection failed for channel: {Channel}, but continuing with offline mode. Error: {Error}", 
-                        normalizedChannel, connectEx.Message);
+                    _logger.LogWarning(connectEx, "⚠ Step 5: {Platform} connection failed for channel: {Channel}, but continuing with offline mode. Error: {Error}", 
+                        platform, normalizedChannel, connectEx.Message);
                     followedChannel.Status = "Connection Failed - Will Retry";
                     followedChannel.IsConnected = false;
                       // Don't throw the exception - allow the channel to be added in offline mode
@@ -1204,39 +1299,39 @@ namespace TwitchChatViewer
                 // Add to storage
                 await _followedChannelsStorage.AddChannelAsync(normalizedChannel);
 
-                _logger.LogInformation("✅ Successfully added channel: {Channel} (Connected: {IsConnected})", normalizedChannel, followedChannel.IsConnected);
+                _logger.LogInformation("✅ Successfully added channel: {Channel} on {Platform} (Connected: {IsConnected})", normalizedChannel, platform, followedChannel.IsConnected);
                 return new ChannelAddResult { Success = true };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to add channel: {Channel} at step: '{Step}'. Detailed error: {ErrorMessage}", 
-                    normalizedChannel, currentStep, ex.Message);
+                _logger.LogError(ex, "❌ Failed to add channel: {Channel} on {Platform} at step: '{Step}'. Detailed error: {ErrorMessage}", 
+                    normalizedChannel, platform, currentStep, ex.Message);
                 
                 // Clean up any partial state
                 try
                 {
                     _logger.LogInformation("🧹 Starting cleanup for failed channel: {Channel}", normalizedChannel);
                     
-                    if (_followedChannels.TryRemove(normalizedChannel, out _))
+                    if (_followedChannels.TryRemove(channelKey, out _))
                     {
                         _logger.LogInformation("✓ Removed channel from followed channels: {Channel}", normalizedChannel);
                     }
                     
-                    if (_clients.TryRemove(normalizedChannel, out var clientToDispose))
+                    if (_clients.TryRemove(channelKey, out var clientToDispose))
                     {
                         try
                         {
                             await clientToDispose.DisconnectAsync();
                             clientToDispose.Dispose();
-                            _logger.LogInformation("✓ Cleaned up IRC client for: {Channel}", normalizedChannel);
+                            _logger.LogInformation("✓ Cleaned up client for: {Channel}", normalizedChannel);
                         }
                         catch (Exception cleanupEx)
                         {
-                            _logger.LogWarning(cleanupEx, "Failed to cleanup IRC client for: {Channel}", normalizedChannel);
+                            _logger.LogWarning(cleanupEx, "Failed to cleanup client for: {Channel}", normalizedChannel);
                         }
                     }
                     
-                    if (_databases.TryRemove(normalizedChannel, out var databaseToDispose))
+                    if (_databases.TryRemove(channelKey, out var databaseToDispose))
                     {
                         try
                         {
