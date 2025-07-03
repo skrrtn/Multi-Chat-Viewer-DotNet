@@ -5,6 +5,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>logo.ico</ApplicationIcon>
+    <AssemblyName>MultiChatViewer</AssemblyName>
     
     <!-- Assembly Information -->
     <AssemblyTitle>Multi Chat Viewer</AssemblyTitle>
