@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
@@ -12,11 +13,11 @@ namespace TwitchChatViewer
         private string _currentDatabasePath;
         private SqliteConnection _connection;
 
-        public async Task InitializeDatabaseAsync(string channelName)
+        public async Task InitializeDatabaseAsync(string channelName, Platform platform)
         {
             try
             {
-                _logger.LogInformation("🗄️ Starting database initialization for channel: {Channel}", channelName);
+                _logger.LogInformation("🗄️ Starting database initialization for channel: {Channel} on {Platform}", channelName, platform);
                 
                 // Close existing connection if any
                 await CloseConnectionAsync();
@@ -34,9 +35,9 @@ namespace TwitchChatViewer
                 else
                 {
                     _logger.LogDebug("✓ Database directory already exists: {Directory}", dbDirectory);
-                }                // Create database file path
-                _currentDatabasePath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
-                _logger.LogInformation("Database path for channel {Channel}: {Path}", channelName, _currentDatabasePath);
+                }                // Create database file path with platform suffix
+                _currentDatabasePath = Path.Combine(dbDirectory, $"{channelName.ToLower()}_{platform.ToString().ToLower()}.db");
+                _logger.LogInformation("Database path for channel {Channel} on {Platform}: {Path}", channelName, platform, _currentDatabasePath);
 
                 // Check if database file already exists
                 bool fileExists = File.Exists(_currentDatabasePath);
@@ -235,12 +236,12 @@ namespace TwitchChatViewer
             }
         }
 
-        public static long GetDatabaseSizeByPath(string channelName)
+        public static long GetDatabaseSizeByPath(string channelName, Platform platform)
         {
             try
             {
                 var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
-                var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}_{platform.ToString().ToLower()}.db");
                 
                 if (!File.Exists(dbPath))
                 {
@@ -256,12 +257,12 @@ namespace TwitchChatViewer
             }
         }
 
-        public static async Task<int> GetMessageCountByPathAsync(string channelName)
+        public static async Task<int> GetMessageCountByPathAsync(string channelName, Platform platform)
         {
             try
             {
                 var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
-                var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}_{platform.ToString().ToLower()}.db");
                 
                 if (!File.Exists(dbPath))
                 {
@@ -354,16 +355,16 @@ namespace TwitchChatViewer
             }
         }
 
-        public static async Task ClearAllMessagesForChannelAsync(string channelName, ILogger logger)
+        public static async Task ClearAllMessagesForChannelAsync(string channelName, Platform platform, ILogger logger)
         {
             try
             {
                 var dbDirectory = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "db");
-                var dbPath = System.IO.Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                var dbPath = System.IO.Path.Combine(dbDirectory, $"{channelName.ToLower()}_{platform.ToString().ToLower()}.db");
                 
                 if (!File.Exists(dbPath))
                 {
-                    logger.LogWarning("Database file not found for channel: {Channel}", channelName);
+                    logger.LogWarning("Database file not found for channel: {Channel} on {Platform}", channelName, platform);
                     return;
                 }
 
@@ -375,25 +376,25 @@ namespace TwitchChatViewer
                 using var command = new SqliteCommand(deleteSql, connection);
                 var deletedRows = await command.ExecuteNonQueryAsync();
                 
-                logger.LogInformation("Cleared {Count} messages from {Channel} database", deletedRows, channelName);
+                logger.LogInformation("Cleared {Count} messages from {Channel} on {Platform} database", deletedRows, channelName, platform);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to clear messages from {Channel} database", channelName);
                 throw;
             }
-        }        public static Task DeleteDatabaseForChannelAsync(string channelName, ILogger logger)
+        }        public static Task DeleteDatabaseForChannelAsync(string channelName, Platform platform, ILogger logger)
         {
             return Task.Run(async () =>
             {
                 try
                 {
                     var dbDirectory = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "db");
-                    var dbPath = System.IO.Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                    var dbPath = System.IO.Path.Combine(dbDirectory, $"{channelName.ToLower()}_{platform.ToString().ToLower()}.db");
                     
                     if (!File.Exists(dbPath))
                     {
-                        logger.LogWarning("Database file not found for channel: {Channel}", channelName);
+                        logger.LogWarning("Database file not found for channel: {Channel} on {Platform}", channelName, platform);
                         return;
                     }
 
@@ -528,21 +529,112 @@ namespace TwitchChatViewer
             }
         }
 
+        public static Task<Platform> GetPlatformByPathAsync(string channelName, Platform platform, ILogger logger = null)
+        {
+            // With the new naming convention, platform is embedded in the filename
+            // This method is kept for compatibility but platform is now explicit
+            logger?.LogDebug("Platform for channel {Channel} is {Platform} (from filename)", channelName, platform);
+            return Task.FromResult(platform);
+        }
+
+        // Legacy compatibility method - tries to detect platform from database metadata
         public static async Task<Platform> GetPlatformByPathAsync(string channelName, ILogger logger = null)
         {
             try
             {
                 var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
-                var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
                 
-                if (!File.Exists(dbPath))
+                // First try new naming convention files
+                foreach (var platform in Enum.GetValues<Platform>())
                 {
-                    logger?.LogDebug("Database file not found for channel {Channel}, defaulting to Twitch", channelName);
-                    return Platform.Twitch;
+                    var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}_{platform.ToString().ToLower()}.db");
+                    if (File.Exists(dbPath))
+                    {
+                        logger?.LogDebug("Found database file for {Channel} with platform {Platform}", channelName, platform);
+                        return platform;
+                    }
+                }
+                
+                // Fall back to legacy naming - check the database metadata
+                var legacyDbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                if (File.Exists(legacyDbPath))
+                {
+                    return await GetPlatformFromLegacyDatabaseAsync(legacyDbPath, logger);
+                }
+                
+                logger?.LogWarning("No database file found for channel {Channel}, defaulting to Twitch", channelName);
+                return Platform.Twitch;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error detecting platform for channel {Channel}, defaulting to Twitch", channelName);
+                return Platform.Twitch;
+            }
+        }
+
+        /// <summary>
+        /// Discovers channel and platform information from database files in the directory
+        /// Handles both old naming convention (channelname.db) and new naming convention (channelname_platform.db)
+        /// </summary>
+        public static async Task<List<(string ChannelName, Platform Platform)>> DiscoverChannelsFromDatabasesAsync(ILogger logger = null)
+        {
+            var channels = new List<(string ChannelName, Platform Platform)>();
+            
+            try
+            {
+                var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
+                if (!Directory.Exists(dbDirectory))
+                {
+                    logger?.LogDebug("Database directory not found");
+                    return channels;
                 }
 
-                var connectionString = $"Data Source={dbPath};";
-                using var connection = new SqliteConnection(connectionString);
+                var dbFiles = Directory.GetFiles(dbDirectory, "*.db")
+                    .Where(f => !f.EndsWith("-wal") && !f.EndsWith("-shm"))
+                    .ToList();
+                
+                foreach (var dbFile in dbFiles)
+                {
+                    var fileName = Path.GetFileNameWithoutExtension(dbFile);
+                    if (string.IsNullOrEmpty(fileName)) continue;
+
+                    // Check if this is the new naming convention (channelname_platform.db)
+                    var parts = fileName.Split('_');
+                    if (parts.Length >= 2)
+                    {
+                        var channelName = string.Join("_", parts.Take(parts.Length - 1)); // All parts except the last one
+                        var platformString = parts[parts.Length - 1]; // Last part
+                        
+                        if (Enum.TryParse<Platform>(platformString, true, out var platform))
+                        {
+                            channels.Add((channelName, platform));
+                            logger?.LogDebug("Discovered channel from new naming convention: {Channel} ({Platform})", channelName, platform);
+                            continue;
+                        }
+                    }
+                    
+                    // Fall back to old naming convention - query database for platform
+                    var legacyPlatform = await GetPlatformFromLegacyDatabaseAsync(dbFile, logger);
+                    channels.Add((fileName, legacyPlatform));
+                    logger?.LogDebug("Discovered channel from legacy naming convention: {Channel} ({Platform})", fileName, legacyPlatform);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error discovering channels from databases");
+            }
+            
+            return channels;
+        }
+
+        /// <summary>
+        /// Gets platform information from a legacy database file (old naming convention)
+        /// </summary>
+        private static async Task<Platform> GetPlatformFromLegacyDatabaseAsync(string dbPath, ILogger logger = null)
+        {
+            try
+            {
+                using var connection = new SqliteConnection($"Data Source={dbPath};");
                 await connection.OpenAsync();
 
                 // Check if metadata table exists
@@ -556,7 +648,7 @@ namespace TwitchChatViewer
 
                 if (!tableExists)
                 {
-                    logger?.LogDebug("Metadata table not found for channel {Channel}, defaulting to Twitch", channelName);
+                    logger?.LogDebug("Metadata table not found in legacy database, defaulting to Twitch");
                     return Platform.Twitch;
                 }
 
@@ -569,18 +661,17 @@ namespace TwitchChatViewer
 
                 if (result != null && Enum.TryParse<Platform>(result.ToString(), out var platform))
                 {
-                    logger?.LogDebug("Retrieved platform {Platform} for channel {Channel}", platform, channelName);
                     return platform;
                 }
                 else
                 {
-                    logger?.LogDebug("No platform metadata found for channel {Channel}, defaulting to Twitch", channelName);
+                    logger?.LogDebug("No platform metadata found in legacy database, defaulting to Twitch");
                     return Platform.Twitch;
                 }
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Failed to get platform for channel {Channel}, defaulting to Twitch", channelName);
+                logger?.LogError(ex, "Error reading platform from legacy database, defaulting to Twitch");
                 return Platform.Twitch;
             }
         }

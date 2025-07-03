@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -226,23 +227,6 @@ namespace TwitchChatViewer
             }
         }
 
-        private void DatabaseMigrationMenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var migrationWindow = new DatabaseMigrationWindow
-                {
-                    Owner = this
-                };
-                migrationWindow.ShowDialog();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error opening Database Migration window");
-                System.Windows.MessageBox.Show($"Error opening Database Migration window: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
         private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
         {
             ExitApplication();
@@ -416,7 +400,7 @@ namespace TwitchChatViewer
                 }
 
                 // Initialize database for this channel (for reading recent messages)
-                await _databaseService.InitializeDatabaseAsync(channelName);
+                await _databaseService.InitializeDatabaseAsync(channelName, platform);
                 
                 // Load recent messages from database
                 await LoadRecentMessagesAsync();
@@ -649,10 +633,35 @@ namespace TwitchChatViewer
                 MessageParser.ParseChatMessage(errorMessage);
                 ChatMessages.Insert(0, errorMessage);
             });
-        }private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        }        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             try
             {
+                _logger.LogInformation("Checking for database migrations...");
+                
+                // Run database migration before loading channels
+                var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
+                if (Directory.Exists(dbDirectory))
+                {
+                    var migrationHelper = new DatabaseMigrationHelper(dbDirectory);
+                    var migrationResult = await migrationHelper.MigrateAllDatabasesAsync();
+                    
+                    if (migrationResult.HasChanges)
+                    {
+                        _logger.LogInformation("Database migration completed. Migrated {Count} databases: {Databases}", 
+                            migrationResult.MigratedDatabases.Count, string.Join(", ", migrationResult.MigratedDatabases));
+                    }
+                    
+                    if (migrationResult.HasErrors)
+                    {
+                        _logger.LogWarning("Database migration completed with errors: {Errors}", migrationResult.ErrorMessage);
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("No database directory found, skipping migration");
+                }
+                
                 _logger.LogInformation("Loading followed channels from storage...");
                 await _multiChannelManager.LoadFollowedChannelsAsync();
                 
@@ -737,7 +746,7 @@ namespace TwitchChatViewer
                 CurrentChannelMessageCount = await _databaseService.GetMessageCountAsync();
 
                 // Get database size
-                var dbSize = ChatDatabaseService.GetDatabaseSizeByPath(CurrentChannel);
+                var dbSize = ChatDatabaseService.GetDatabaseSizeByPath(CurrentChannel, CurrentChannelPlatform);
                 CurrentChannelDatabaseSize = FormatFileSize(dbSize);
             }
             catch (Exception ex)

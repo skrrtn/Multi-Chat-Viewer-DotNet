@@ -201,7 +201,7 @@ namespace TwitchChatViewer
                 
                 _logger.LogInformation("Discovering channels from existing database files...");
                 
-                var discoveredChannels = await DiscoverChannelsFromDatabasesAsync();
+                var discoveredChannels = await ChatDatabaseService.DiscoverChannelsFromDatabasesAsync(_logger);
                   foreach (var (channelName, platform) in discoveredChannels)
                 {
                     _logger.LogInformation("Processing discovered channel: {Channel} ({Platform})", channelName, platform);
@@ -395,7 +395,7 @@ namespace TwitchChatViewer
                 currentStep = "Initializing database";
                 _logger.LogInformation("Step 3: {Step} for channel: {Channel}", currentStep, normalizedChannel);
                 database = new ChatDatabaseService(_loggerFactory.CreateLogger<ChatDatabaseService>());
-                await database.InitializeDatabaseAsync(normalizedChannel);
+                await database.InitializeDatabaseAsync(normalizedChannel, platform);
                 _databases[normalizedChannel] = database;
                 _logger.LogInformation("✓ Step 3: Successfully initialized database for: {Channel}", normalizedChannel);
 
@@ -408,13 +408,13 @@ namespace TwitchChatViewer
                 // Step 4: Update database size
                 currentStep = "Reading database size";
                 _logger.LogInformation("Step 4: {Step} for channel: {Channel}", currentStep, normalizedChannel);
-                followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel);
+                followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel, platform);
                 _logger.LogInformation("✓ Step 4: Database size calculated for: {Channel} ({Size} bytes)", normalizedChannel, followedChannel.DatabaseSize);
 
                 // Step 4.5: Load existing message count from database
                 currentStep = "Loading existing message count";
                 _logger.LogInformation("Step 4.5: {Step} for channel: {Channel}", currentStep, normalizedChannel);
-                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel);
+                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel, platform);
                 _logger.LogInformation("✓ Step 4.5: Loaded existing message count for: {Channel} ({Count} messages)", normalizedChannel, followedChannel.MessageCount);
 
                 // Step 5: Connect to platform
@@ -560,8 +560,15 @@ namespace TwitchChatViewer
                 // Clear SQLite connection pools before deletion
                 Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
+                // Get platform information before deleting
+                var platform = Platform.Twitch; // Default fallback
+                if (_followedChannels.TryGetValue(normalizedChannel, out var channelInfo))
+                {
+                    platform = channelInfo.Platform;
+                }
+
                 // Delete the database file completely
-                await ChatDatabaseService.DeleteDatabaseForChannelAsync(normalizedChannel, _logger);                // Remove from followed channels
+                await ChatDatabaseService.DeleteDatabaseForChannelAsync(normalizedChannel, platform, _logger);                // Remove from followed channels
                 _followedChannels.TryRemove(normalizedChannel, out _);
 
                 // Remove from storage
@@ -624,7 +631,7 @@ namespace TwitchChatViewer
                         // Update database size after logging (every 10 messages to reduce overhead)
                         if (followedChannel.MessageCount % 10 == 0)
                         {
-                            followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(channel);
+                            followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(channel, followedChannel.Platform);
                         }
                     }
                     else if (!followedChannel.LoggingEnabled)
@@ -760,14 +767,14 @@ namespace TwitchChatViewer
                 // Store platform in config
                 await _configService.SetChannelPlatformAsync(normalizedChannel, platform);                // Create database service (for when logging is re-enabled)
                 var database = new ChatDatabaseService(_loggerFactory.CreateLogger<ChatDatabaseService>());
-                await database.InitializeDatabaseAsync(normalizedChannel);
+                await database.InitializeDatabaseAsync(normalizedChannel, platform);
                 _databases[normalizedChannel] = database;
 
                 // Update database size
-                followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel);
+                followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel, platform);
 
                 // Load existing message count from database
-                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel);
+                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel, platform);
 
                 _logger.LogInformation("Added offline channel: {Channel}", normalizedChannel);
                 return true;
@@ -911,10 +918,10 @@ namespace TwitchChatViewer
                 {
                     try
                     {
-                        var dbSize = ChatDatabaseService.GetDatabaseSizeByPath(channel.Name);
+                        var dbSize = ChatDatabaseService.GetDatabaseSizeByPath(channel.Name, channel.Platform);
                         channel.DatabaseSize = dbSize;
                         
-                        var messageCount = await ChatDatabaseService.GetMessageCountByPathAsync(channel.Name);
+                        var messageCount = await ChatDatabaseService.GetMessageCountByPathAsync(channel.Name, channel.Platform);
                         channel.MessageCount = messageCount;
                     }
                     catch (Exception ex)
@@ -1159,18 +1166,18 @@ namespace TwitchChatViewer
                 currentStep = "Initializing database";
                 _logger.LogInformation("Step 3: {Step} for channel: {Channel}", currentStep, normalizedChannel);
                 database = new ChatDatabaseService(_loggerFactory.CreateLogger<ChatDatabaseService>());
-                await database.InitializeDatabaseAsync(normalizedChannel);
+                await database.InitializeDatabaseAsync(normalizedChannel, Platform.Twitch);
                 _databases[normalizedChannel] = database;
                 _logger.LogInformation("✓ Step 3: Successfully initialized database for: {Channel}", normalizedChannel);                // Step 4: Update database size
                 currentStep = "Reading database size";
                 _logger.LogInformation("Step 4: {Step} for channel: {Channel}", currentStep, normalizedChannel);
-                followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel);
+                followedChannel.DatabaseSize = ChatDatabaseService.GetDatabaseSizeByPath(normalizedChannel, Platform.Twitch);
                 _logger.LogInformation("✓ Step 4: Database size calculated for: {Channel} ({Size} bytes)", normalizedChannel, followedChannel.DatabaseSize);
 
                 // Step 4.5: Load existing message count from database
                 currentStep = "Loading existing message count";
                 _logger.LogInformation("Step 4.5: {Step} for channel: {Channel}", currentStep, normalizedChannel);
-                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel);
+                followedChannel.MessageCount = await ChatDatabaseService.GetMessageCountByPathAsync(normalizedChannel, Platform.Twitch);
                 _logger.LogInformation("✓ Step 4.5: Loaded existing message count for: {Channel} ({Count} messages)", normalizedChannel, followedChannel.MessageCount);
 
                 // Step 5: Connect to IRC

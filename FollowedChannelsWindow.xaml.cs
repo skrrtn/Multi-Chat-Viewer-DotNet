@@ -417,7 +417,7 @@ namespace TwitchChatViewer
                         UpdateStatus($"Erasing all messages from channel: {selectedChannel.Name}... ({successCount + failureCount + 1}/{selectedChannels.Count})");
                         
                         // Use the static method to clear messages for any channel
-                        await ChatDatabaseService.ClearAllMessagesForChannelAsync(selectedChannel.Name, _logger);
+                        await ChatDatabaseService.ClearAllMessagesForChannelAsync(selectedChannel.Name, selectedChannel.Platform, _logger);
                           // Update the channel's properties
                         selectedChannel.MessageCount = 0;
                         selectedChannel.DatabaseSize = 0;
