@@ -468,24 +468,32 @@ namespace TwitchChatViewer
                     _logger.LogError(connectEx, "❌ Step 5: {Platform} connection failed for channel: {Channel}. Error: {Error}", 
                         platform, normalizedChannel, connectEx.Message);
                     
-                    // For Kick channels, provide more specific error information
+                    // For Kick channels, provide more specific error information but be more lenient with timeouts
                     if (platform == Platform.Kick)
                     {
-                        var kickErrorMessage = $"Failed to connect to Kick channel '{normalizedChannel}': {connectEx.Message}";
                         if (connectEx.Message.Contains("not found"))
                         {
-                            kickErrorMessage += " Please check that the channel name is correct and that the channel exists on Kick.com.";
+                            // Channel doesn't exist - this is a real error
+                            var kickErrorMessage = $"Failed to connect to Kick channel '{normalizedChannel}': {connectEx.Message}. Please check that the channel name is correct and that the channel exists on Kick.com.";
+                            followedChannel.Status = $"Not Found: {connectEx.Message}";
+                            followedChannel.IsConnected = false;
+                            throw new Exception(kickErrorMessage, connectEx);
                         }
-                        else if (connectEx.Message.Contains("credentials"))
+                        else if (connectEx.Message.Contains("timed out"))
                         {
-                            kickErrorMessage += " Please check that your Kick OAuth credentials are valid.";
+                            // Connection timeout - allow the channel to be added but keep trying in background
+                            _logger.LogWarning("Kick connection timed out for {Channel}, but channel will be added and connection will be retried in background", normalizedChannel);
+                            followedChannel.Status = "Connecting...";
+                            followedChannel.IsConnected = false;
+                            // Don't throw - allow the channel to be added
                         }
-                        
-                        followedChannel.Status = $"Connection Failed: {connectEx.Message}";
-                        followedChannel.IsConnected = false;
-                        
-                        // For Kick channels, we want to throw the error to provide better feedback
-                        throw new Exception(kickErrorMessage, connectEx);
+                        else
+                        {
+                            // Other errors - set status but don't throw
+                            followedChannel.Status = $"Connection Failed: {connectEx.Message}";
+                            followedChannel.IsConnected = false;
+                            _logger.LogWarning("Kick connection failed for {Channel}: {Error}, but channel will be added for retry", normalizedChannel, connectEx.Message);
+                        }
                     }
                     else
                     {
@@ -512,12 +520,12 @@ namespace TwitchChatViewer
                 {
                     _logger.LogInformation("🧹 Starting cleanup for failed channel: {Channel}", normalizedChannel);
                     
-                    if (_followedChannels.TryRemove(normalizedChannel, out _))
+                    if (_followedChannels.TryRemove(channelKey, out _))
                     {
                         _logger.LogInformation("✓ Removed channel from followed channels: {Channel}", normalizedChannel);
                     }
                     
-                    if (_clients.TryRemove(normalizedChannel, out var clientToDispose))
+                    if (_clients.TryRemove(channelKey, out var clientToDispose))
                     {
                         try
                         {
@@ -531,7 +539,7 @@ namespace TwitchChatViewer
                         }
                     }
                     
-                    if (_databases.TryRemove(normalizedChannel, out var databaseToDispose))
+                    if (_databases.TryRemove(channelKey, out var databaseToDispose))
                     {
                         try
                         {
