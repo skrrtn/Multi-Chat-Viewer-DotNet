@@ -473,17 +473,18 @@ namespace TwitchChatViewer
                     {
                         if (connectEx.Message.Contains("not found"))
                         {
-                            // Channel doesn't exist - this is a real error
-                            var kickErrorMessage = $"Failed to connect to Kick channel '{normalizedChannel}': {connectEx.Message}. Please check that the channel name is correct and that the channel exists on Kick.com.";
+                            // Channel doesn't exist - this is a real error, but we still want to add it to the database
+                            // so users can retry later. Only show the error in the status.
+                            _logger.LogWarning("Kick channel '{Channel}' not found, but adding to database for potential retry", normalizedChannel);
                             followedChannel.Status = $"Not Found: {connectEx.Message}";
                             followedChannel.IsConnected = false;
-                            throw new Exception(kickErrorMessage, connectEx);
+                            // Don't throw - allow the channel to be added so user can retry later
                         }
                         else if (connectEx.Message.Contains("timed out"))
                         {
                             // Connection timeout - allow the channel to be added but keep trying in background
                             _logger.LogWarning("Kick connection timed out for {Channel}, but channel will be added and connection will be retried in background", normalizedChannel);
-                            followedChannel.Status = "Connecting...";
+                            followedChannel.Status = "Connection Failed - Will Retry";
                             followedChannel.IsConnected = false;
                             // Don't throw - allow the channel to be added
                         }
