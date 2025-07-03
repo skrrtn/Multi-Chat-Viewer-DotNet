@@ -11,23 +11,19 @@ namespace TwitchChatViewer
     public class AppConfiguration
     {
         public Dictionary<string, ChannelConfig> Channels { get; set; } = [];
-        public List<string> FollowedChannels { get; set; } = [];
         public List<string> BlacklistedUsers { get; set; } = [];
-        public string ConfigVersion { get; set; } = "1.0";
+        public string ConfigVersion { get; set; } = "1.3";
         public DateTime LastSaved { get; set; } = DateTime.Now;
-        public KickConfig Kick { get; set; } = new();
+        
+        // Kick credentials (encrypted)
+        public string KickClientId { get; set; } = string.Empty;
+        public string KickClientSecret { get; set; } = string.Empty;
     }
 
     public class ChannelConfig
     {
         public bool LoggingEnabled { get; set; } = true;
         public Platform Platform { get; set; } = Platform.Twitch;
-    }
-
-    public class KickConfig
-    {
-        public string EncryptedClientId { get; set; } = string.Empty;
-        public string EncryptedClientSecret { get; set; } = string.Empty;
     }
 
     public class UnifiedConfigurationService
@@ -77,13 +73,20 @@ namespace TwitchChatViewer
                     return;
                 }
 
-                lock (_lock)
+                // Check if we need to migrate from the old format with followedChannels array
+                var migrationNeeded = await MigrateFromFollowedChannelsArrayAsync(json);
+                
+                if (!migrationNeeded)
                 {
-                    _config = JsonSerializer.Deserialize<AppConfiguration>(json) ?? new AppConfiguration();
+                    // No migration needed, load normally
+                    lock (_lock)
+                    {
+                        _config = JsonSerializer.Deserialize<AppConfiguration>(json) ?? new AppConfiguration();
+                    }
                 }
 
-                _logger.LogInformation("Loaded configuration: {ChannelCount} channels, {FollowedCount} followed, {BlacklistCount} blacklisted users",
-                    _config.Channels.Count, _config.FollowedChannels.Count, _config.BlacklistedUsers.Count);
+                _logger.LogInformation("Loaded configuration: {ChannelCount} channels, {BlacklistCount} blacklisted users",
+                    _config.Channels.Count, _config.BlacklistedUsers.Count);
             }
             catch (Exception ex)
             {
@@ -106,8 +109,8 @@ namespace TwitchChatViewer
                 var json = JsonSerializer.Serialize(configToSave, JsonOptions);
                 await File.WriteAllTextAsync(_configFilePath, json);
 
-                _logger.LogInformation("Saved configuration: {ChannelCount} channels, {FollowedCount} followed, {BlacklistCount} blacklisted users",
-                    configToSave.Channels.Count, configToSave.FollowedChannels.Count, configToSave.BlacklistedUsers.Count);
+                _logger.LogInformation("Saved configuration: {ChannelCount} channels, {BlacklistCount} blacklisted users",
+                    configToSave.Channels.Count, configToSave.BlacklistedUsers.Count);
             }
             catch (Exception ex)
             {
@@ -197,7 +200,7 @@ namespace TwitchChatViewer
         {
             lock (_lock)
             {
-                return new List<string>(_config.FollowedChannels);
+                return new List<string>(_config.Channels.Keys);
             }
         }
 
@@ -207,9 +210,13 @@ namespace TwitchChatViewer
             
             lock (_lock)
             {
-                if (!_config.FollowedChannels.Contains(normalizedChannel))
+                if (!_config.Channels.ContainsKey(normalizedChannel))
                 {
-                    _config.FollowedChannels.Add(normalizedChannel);
+                    _config.Channels[normalizedChannel] = new ChannelConfig
+                    {
+                        LoggingEnabled = true,
+                        Platform = Platform.Twitch // Default to Twitch for new channels
+                    };
                 }
                 else
                 {
@@ -229,7 +236,7 @@ namespace TwitchChatViewer
             bool removed;
             lock (_lock)
             {
-                removed = _config.FollowedChannels.Remove(normalizedChannel);
+                removed = _config.Channels.Remove(normalizedChannel);
             }
 
             if (removed)
@@ -241,6 +248,48 @@ namespace TwitchChatViewer
             {
                 _logger.LogWarning("Channel {Channel} not found in followed channels", normalizedChannel);
             }
+        }
+
+        #endregion
+
+        #region Kick Credentials
+
+        public Task<string> GetKickClientIdAsync()
+        {
+            lock (_lock)
+            {
+                return Task.FromResult(_config.KickClientId);
+            }
+        }
+
+        public Task<string> GetKickClientSecretAsync()
+        {
+            lock (_lock)
+            {
+                return Task.FromResult(_config.KickClientSecret);
+            }
+        }
+
+        public async Task SetKickClientIdAsync(string clientId)
+        {
+            lock (_lock)
+            {
+                _config.KickClientId = clientId ?? string.Empty;
+            }
+
+            await SaveConfigurationAsync();
+            _logger.LogInformation("Updated Kick Client ID");
+        }
+
+        public async Task SetKickClientSecretAsync(string clientSecret)
+        {
+            lock (_lock)
+            {
+                _config.KickClientSecret = clientSecret ?? string.Empty;
+            }
+
+            await SaveConfigurationAsync();
+            _logger.LogInformation("Updated Kick Client Secret");
         }
 
         #endregion
@@ -341,7 +390,7 @@ namespace TwitchChatViewer
             await Task.WhenAll(migrationTasks);
 
             // Save the migrated configuration
-            if (_config.Channels.Count > 0 || _config.FollowedChannels.Count > 0 || _config.BlacklistedUsers.Count > 0)
+            if (_config.Channels.Count > 0 || _config.BlacklistedUsers.Count > 0)
             {
                 await SaveConfigurationAsync();
                 _logger.LogInformation("Migration completed successfully");
@@ -394,7 +443,19 @@ namespace TwitchChatViewer
                 
                 if (oldChannels != null)
                 {
-                    _config.FollowedChannels.AddRange(oldChannels);
+                    // Migrate old followed channels to the new channels structure
+                    foreach (var channel in oldChannels)
+                    {
+                        var normalizedChannel = channel.ToLower().Replace("#", "");
+                        if (!_config.Channels.ContainsKey(normalizedChannel))
+                        {
+                            _config.Channels[normalizedChannel] = new ChannelConfig
+                            {
+                                LoggingEnabled = true,
+                                Platform = Platform.Twitch // Default to Twitch for migrated channels
+                            };
+                        }
+                    }
                     _logger.LogInformation("Migrated {Count} followed channels", oldChannels.Count);
                 }
             }
@@ -431,42 +492,87 @@ namespace TwitchChatViewer
             public List<string> BlacklistedUsers { get; set; } = [];
         }
 
-        #endregion
-
-        #region Kick Credentials
-
-        public Task<string> GetKickClientIdAsync()
+        /// <summary>
+        /// Migrates from the old configuration format that had both 'channels' and 'followedChannels' arrays
+        /// to the new unified format with just 'channels'
+        /// </summary>
+        /// <returns>True if migration was performed, false otherwise</returns>
+        private async Task<bool> MigrateFromFollowedChannelsArrayAsync(string json)
         {
-            lock (_lock)
+            try
             {
-                return Task.FromResult(_config.Kick.EncryptedClientId);
+                using var document = JsonDocument.Parse(json);
+                var root = document.RootElement;
+
+                // Check if this config has the old followedChannels array
+                if (root.TryGetProperty("followedChannels", out var followedChannelsElement) && 
+                    followedChannelsElement.ValueKind == JsonValueKind.Array)
+                {
+                    _logger.LogInformation("Detected old configuration format with followedChannels array, migrating...");
+
+                    // Deserialize the old format to get both structures
+                    var oldConfig = JsonSerializer.Deserialize<OldAppConfiguration>(json);
+                    if (oldConfig?.FollowedChannels != null)
+                    {
+                        // Ensure all channels from followedChannels array exist in the channels dictionary
+                        foreach (var channelName in oldConfig.FollowedChannels)
+                        {
+                            var normalizedChannel = channelName.ToLower().Replace("#", "");
+                            if (!oldConfig.Channels.ContainsKey(normalizedChannel))
+                            {
+                                // Add missing channel with default settings
+                                oldConfig.Channels[normalizedChannel] = new ChannelConfig
+                                {
+                                    LoggingEnabled = true,
+                                    Platform = Platform.Twitch // Default to Twitch for legacy channels
+                                };
+                                _logger.LogInformation("Added missing channel from followedChannels array: {Channel}", normalizedChannel);
+                            }
+                        }
+
+                        // Update the AppConfiguration to remove the followedChannels array
+                        lock (_lock)
+                        {
+                            _config = new AppConfiguration
+                            {
+                                Channels = oldConfig.Channels,
+                                BlacklistedUsers = oldConfig.BlacklistedUsers ?? [],
+                                ConfigVersion = "1.3",
+                                LastSaved = DateTime.Now,
+                                KickClientId = oldConfig.KickClientId ?? string.Empty,
+                                KickClientSecret = oldConfig.KickClientSecret ?? string.Empty
+                            };
+                        }
+
+                        // Save the migrated configuration immediately to avoid re-migration
+                        await SaveConfigurationAsync();
+                        _logger.LogInformation("Successfully migrated configuration from old format with followedChannels array");
+                        
+                        return true; // Migration was performed
+                    }
+                }
+                
+                return false; // No migration needed
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during migration from followedChannels array format");
+                return false;
             }
         }
 
-        public Task<string> GetKickClientSecretAsync()
+        /// <summary>
+        /// Temporary class to deserialize the old configuration format
+        /// </summary>
+        private class OldAppConfiguration
         {
-            lock (_lock)
-            {
-                return Task.FromResult(_config.Kick.EncryptedClientSecret);
-            }
-        }
-
-        public async Task SetKickClientIdAsync(string encryptedClientId)
-        {
-            lock (_lock)
-            {
-                _config.Kick.EncryptedClientId = encryptedClientId;
-            }
-            await SaveConfigurationAsync();
-        }
-
-        public async Task SetKickClientSecretAsync(string encryptedClientSecret)
-        {
-            lock (_lock)
-            {
-                _config.Kick.EncryptedClientSecret = encryptedClientSecret;
-            }
-            await SaveConfigurationAsync();
+            public Dictionary<string, ChannelConfig> Channels { get; set; } = [];
+            public List<string> FollowedChannels { get; set; } = [];
+            public List<string> BlacklistedUsers { get; set; } = [];
+            public string ConfigVersion { get; set; } = "1.0";
+            public DateTime LastSaved { get; set; } = DateTime.Now;
+            public string KickClientId { get; set; } = string.Empty;
+            public string KickClientSecret { get; set; } = string.Empty;
         }
 
         #endregion

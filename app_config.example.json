@@ -1,21 +1,24 @@
 {
   "channels": {
     "hasanabi": {
-      "loggingEnabled": true
+      "loggingEnabled": true,
+      "platform": "twitch"
     },
     "tectone": {
-      "loggingEnabled": false
+      "loggingEnabled": false,
+      "platform": "kick"
+    },
+    "skrrtnlive": {
+      "loggingEnabled": true,
+      "platform": "twitch"
     }
   },
-  "followedChannels": [
-    "hasanabi",
-    "tectone",
-    "skrrtnlive"
-  ],
   "blacklistedUsers": [
     "troll_user_1",
     "spam_bot_2"
   ],
-  "configVersion": "1.0",
-  "lastSaved": "2025-07-02T10:30:00Z"
+  "kickClientId": "",
+  "kickClientSecret": "",
+  "configVersion": "1.3",
+  "lastSaved": "2025-07-03T10:30:00Z"
 }

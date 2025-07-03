@@ -1,0 +1,19 @@
+{
+  "channels": {
+    "esfandtv": {
+      "loggingEnabled": true,
+      "platform": "twitch"
+    },
+    "hasanabi": {
+      "loggingEnabled": true,
+      "platform": "twitch"
+    }
+  },
+  "followedChannels": [
+    "esfandtv",
+    "hasanabi"
+  ],
+  "blacklistedUsers": [],
+  "configVersion": "1.1",
+  "lastSaved": "2025-01-03T14:30:00Z"
+}
