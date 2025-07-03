@@ -138,6 +138,21 @@ The executable will be created in `bin\Release\net8.0-windows\win-x64\publish\`
 - **Channel Statistics**: Monitor message counts, database sizes, and last activity times in the Followed Channels window
 - **Message Persistence**: All messages are automatically saved to local SQLite databases (when logging is enabled)
 
+## Configuration
+
+The application uses a single unified configuration file called `appsettings.json` that stores all settings in one convenient location:
+
+- **Followed Channels**: List of channels you're monitoring, including their logging preferences
+- **User Filters**: Blacklisted users that are filtered from chat and database logging  
+- **Channel Settings**: Per-channel preferences like logging enabled/disabled status
+
+The configuration file is automatically created and managed by the application. You don't need to manually edit it, but it's stored in JSON format for easy backup or transfer between systems.
+
+**Configuration File Location:**
+- The `appsettings.json` file is created in the same directory as the application executable
+- All settings are automatically saved when you make changes through the UI
+- The file is human-readable JSON format for easy inspection or backup
+
 ## Technical Details
 
 ### Twitch IRC Connection
@@ -176,6 +191,11 @@ The application connects to Twitch's IRC servers using:
    - Font size is constrained between 6pt and 36pt for readability
    - Window resizing temporarily pauses message processing to prevent UI freezing
 
+6. **Configuration Issues**:
+   - All settings are stored in `appsettings.json` in the application directory
+   - If settings become corrupted, delete `appsettings.json` and restart the application to reset to defaults
+   - The application will automatically recreate the configuration file with default settings
+
 ## Development
 
 ### Dependencies
@@ -184,7 +204,7 @@ The application connects to Twitch's IRC servers using:
 - Microsoft.Extensions.Logging (8.0.0)
 - Microsoft.Extensions.Logging.Console (8.0.0)
 - Microsoft.Data.Sqlite (8.0.0) - For local message storage
-- System.Text.Json - For configuration and settings management
+- System.Text.Json - For unified configuration file management
 
 ### Project Architecture
 
@@ -196,8 +216,8 @@ The application follows a modular architecture with dependency injection:
 - **ChatDatabaseService**: Handles SQLite database operations for message persistence
 - **UserFilterService**: Manages user blacklist functionality
 - **UserMessageLookupService**: Provides user search and message history features
-- **ChannelSettingsManager**: Persists per-channel settings (logging preferences, etc.)
-- **FollowedChannelsStorage**: Manages the list of followed channels
+- **UnifiedConfigurationService**: Manages all application settings in a single `appsettings.json` file
+- **FollowedChannelsStorage**: Manages the list of followed channels (integrated with unified configuration)
 
 ## License
 

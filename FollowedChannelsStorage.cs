@@ -1,104 +1,72 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text.Json;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace TwitchChatViewer
-{    public class FollowedChannelsStorage
+{
+    public class FollowedChannelsStorage
     {
         private readonly ILogger<FollowedChannelsStorage> _logger;
-        private readonly string _storageFilePath;
-        
-        // Cache JsonSerializerOptions to avoid creating new instances
-        private static readonly JsonSerializerOptions _jsonOptions = new() 
-        { 
-            WriteIndented = true 
-        };
+        private readonly UnifiedConfigurationService _configService;
 
-        public FollowedChannelsStorage(ILogger<FollowedChannelsStorage> logger)
+        public FollowedChannelsStorage(ILogger<FollowedChannelsStorage> logger, UnifiedConfigurationService configService)
         {
             _logger = logger;
-            
-            // Store in the same directory as the executable
-            var appDirectory = AppContext.BaseDirectory;
-            _storageFilePath = Path.Combine(appDirectory, "followed_channels.json");
-            
-            _logger.LogInformation("FollowedChannelsStorage initialized with path: {Path}", _storageFilePath);
-        }        public async Task<List<string>> LoadChannelsAsync()
+            _configService = configService;
+            _logger.LogInformation("FollowedChannelsStorage initialized with unified configuration service");
+        }
+
+        public async Task<List<string>> LoadChannelsAsync()
         {
             try
             {
-                if (!File.Exists(_storageFilePath))
-                {
-                    _logger.LogInformation("No followed channels file found, returning empty list");
-                    return [];
-                }
-
-                var json = await File.ReadAllTextAsync(_storageFilePath);
-                if (string.IsNullOrWhiteSpace(json))
-                {
-                    _logger.LogInformation("Followed channels file is empty, returning empty list");
-                    return [];
-                }
-
-                var channels = JsonSerializer.Deserialize<List<string>>(json) ?? [];
-                _logger.LogInformation("Loaded {Count} followed channels from storage", channels.Count);
+                // Ensure configuration is loaded
+                await _configService.LoadConfigurationAsync();
+                var channels = _configService.GetFollowedChannels();
+                _logger.LogInformation("Loaded {Count} followed channels from unified configuration", channels.Count);
                 return channels;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading followed channels from {Path}", _storageFilePath);
+                _logger.LogError(ex, "Error loading followed channels");
                 return [];
             }
-        }        public async Task SaveChannelsAsync(List<string> channels)
+        }
+
+        public async Task SaveChannelsAsync(List<string> channels)
         {
             try
             {
-                var json = JsonSerializer.Serialize(channels, _jsonOptions);
+                // Clear existing followed channels and add new ones
+                var currentChannels = _configService.GetFollowedChannels();
                 
-                await File.WriteAllTextAsync(_storageFilePath, json);
-                _logger.LogInformation("Saved {Count} followed channels to storage", channels.Count);
+                // Remove all current channels first
+                var removeTask = Task.WhenAll(currentChannels.Select(c => _configService.RemoveFollowedChannelAsync(c)));
+                await removeTask;
+                
+                // Add all new channels
+                var addTasks = channels.Select(c => _configService.AddFollowedChannelAsync(c));
+                await Task.WhenAll(addTasks);
+                
+                _logger.LogInformation("Saved {Count} followed channels to unified configuration", channels.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving followed channels to {Path}", _storageFilePath);
+                _logger.LogError(ex, "Error saving followed channels");
                 throw;
             }
         }
 
         public async Task AddChannelAsync(string channelName)
         {
-            var channels = await LoadChannelsAsync();
-            var normalizedChannel = channelName.ToLower().Replace("#", "");
-            
-            if (!channels.Contains(normalizedChannel))
-            {
-                channels.Add(normalizedChannel);
-                await SaveChannelsAsync(channels);
-                _logger.LogInformation("Added channel {Channel} to storage", normalizedChannel);
-            }
-            else
-            {
-                _logger.LogWarning("Channel {Channel} already exists in storage", normalizedChannel);
-            }
+            await _configService.AddFollowedChannelAsync(channelName);
         }
 
         public async Task RemoveChannelAsync(string channelName)
         {
-            var channels = await LoadChannelsAsync();
-            var normalizedChannel = channelName.ToLower().Replace("#", "");
-            
-            if (channels.Remove(normalizedChannel))
-            {
-                await SaveChannelsAsync(channels);
-                _logger.LogInformation("Removed channel {Channel} from storage", normalizedChannel);
-            }
-            else
-            {
-                _logger.LogWarning("Channel {Channel} not found in storage", normalizedChannel);
-            }
+            await _configService.RemoveFollowedChannelAsync(channelName);
         }
     }
 }

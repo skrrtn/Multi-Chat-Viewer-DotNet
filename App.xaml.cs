@@ -69,13 +69,20 @@ namespace TwitchChatViewer
             {
                 builder.AddConsole();
                 builder.SetMinimumLevel(LogLevel.Information);
-            });            services.AddSingleton<TwitchIrcClient>();
+            });
+
+            // Register the unified configuration service first
+            services.AddSingleton<UnifiedConfigurationService>();
+
+            services.AddSingleton<TwitchIrcClient>();
             services.AddSingleton<ChatDatabaseService>();
             services.AddSingleton<ChannelSettingsManager>();
             services.AddSingleton<FollowedChannelsStorage>();
             services.AddSingleton<MultiChannelManager>();
             services.AddSingleton<UserFilterService>();
-            services.AddSingleton<UserMessageLookupService>();            services.AddTransient<FollowedChannelsWindow>();
+            services.AddSingleton<UserMessageLookupService>();
+
+            services.AddTransient<FollowedChannelsWindow>();
             services.AddTransient<UserFiltersWindow>();
             services.AddTransient<UserMessagesWindow>();
             services.AddTransient<UserLookupWindow>();
