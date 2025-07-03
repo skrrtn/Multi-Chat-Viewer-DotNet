@@ -48,6 +48,16 @@ namespace TwitchChatViewer
                     await DisconnectAsync();
                 }
 
+                // Ensure we have a fresh client instance
+                if (_kickClient == null)
+                {
+                    _logger.LogInformation("Creating new Kick client instance");
+                    _kickClient = new KickClient(_logger);
+                    _kickClient.OnMessage += OnKickChatMessage;
+                    _kickClient.OnConnected += OnKickConnected;
+                    _kickClient.OnDisconnected += OnKickDisconnected;
+                }
+
                 _currentChannel = channel.ToLower();
                 _logger.LogInformation("Connecting to Kick channel: {Channel}...", _currentChannel);
 
@@ -70,9 +80,22 @@ namespace TwitchChatViewer
                 await _kickClient.ListenToChatRoomAsync(_chatroomId);
                 await _kickClient.ConnectAsync();
 
-                _isConnected = true;
-                _logger.LogInformation("Successfully connected to Kick channel: {Channel}", _currentChannel);
-                Connected?.Invoke(this, _currentChannel);
+                // Wait a moment for the connection to establish and OnKickConnected to be called
+                _logger.LogInformation("Kick connection initiated for channel: {Channel}, waiting for connection confirmation...", _currentChannel);
+                
+                // Wait up to 10 seconds for the connection to be confirmed
+                var timeout = DateTime.Now.AddSeconds(10);
+                while (!_isConnected && DateTime.Now < timeout)
+                {
+                    await Task.Delay(100);
+                }
+
+                if (!_isConnected)
+                {
+                    throw new Exception($"Connection to Kick channel '{_currentChannel}' timed out - no connection confirmation received");
+                }
+
+                _logger.LogInformation("Successfully confirmed connection to Kick channel: {Channel}", _currentChannel);
             }
             catch (Exception ex)
             {

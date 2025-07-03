@@ -287,38 +287,7 @@ namespace TwitchChatViewer
                 SwitchToChannelRequested?.Invoke(this, selectedChannel);
                 UpdateStatus($"Switching main window to channel: {selectedChannel.Name}");
             }
-        }        private async void LoggingCheckBox_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is CheckBox checkBox && checkBox.DataContext is FollowedChannel channel)
-            {
-                var isChecked = checkBox.IsChecked ?? false;
-                var statusText = isChecked ? "enabled" : "disabled";
-                
-                _logger.LogInformation("LoggingCheckBox_Click: Channel={Channel}, IsChecked={IsChecked}, Current LoggingEnabled={LoggingEnabled}, Current IsConnected={IsConnected}", 
-                    channel.Name, isChecked, channel.LoggingEnabled, channel.IsConnected);
-                
-                UpdateStatus($"Logging {statusText} for channel: {channel.Name}");
-                
-                // Update the setting in the manager with the checkbox value
-                await _channelManager.UpdateChannelLoggingAsync(channel.Name, isChecked);
-                
-                // Get the updated channel object from the manager
-                var updatedChannel = _channelManager.GetFollowedChannels()
-                    .FirstOrDefault(c => c.Name.Equals(channel.Name, StringComparison.OrdinalIgnoreCase));
-                
-                if (updatedChannel != null)
-                {
-                    _logger.LogInformation("After UpdateChannelLoggingAsync: Channel={Channel}, LoggingEnabled={LoggingEnabled}, IsConnected={IsConnected}, Status={Status}", 
-                        updatedChannel.Name, updatedChannel.LoggingEnabled, updatedChannel.IsConnected, updatedChannel.Status);
-                }
-                
-                // Refresh the entire channels list to get the updated object instances
-                Dispatcher.Invoke(() =>
-                {
-                    RefreshChannelsList();
-                    _logger.LogInformation("Refreshed channels list after checkbox change for channel: {Channel}", channel.Name);
-                });
-            }        }
+        }
 
         private void OnChannelConnected(object sender, string channel)
         {

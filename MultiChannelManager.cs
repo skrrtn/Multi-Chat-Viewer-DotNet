@@ -187,7 +187,7 @@ namespace TwitchChatViewer
         public event EventHandler<string> ChannelConnected;
         public event EventHandler<string> ChannelDisconnected;
         public event EventHandler<string> ChannelRemoved;
-        public event EventHandler<(string Channel, string Error)> ChannelError;        public event EventHandler<(string Channel, bool LoggingEnabled)> ChannelLoggingChanged;
+        public event EventHandler<(string Channel, string Error)> ChannelError;
 
         // Generate unique key for channel storage using both name and platform
         private static string GenerateChannelKey(string channelName, Platform platform)
@@ -254,19 +254,12 @@ namespace TwitchChatViewer
                     
                     var loggingEnabled = _settingsManager.GetLoggingEnabled(channelName);
 
-                    if (loggingEnabled)
+                    // Always try to connect since we now always enable logging
+                    _logger.LogInformation("Auto-connecting to channel: {Channel} on {Platform}", channelName, platform);
+                    var success = await AddChannelAsync(channelName, platform, true);  // Always enable logging
+                    if (!success)
                     {
-                        _logger.LogInformation("Auto-connecting to enabled channel: {Channel} on {Platform}", channelName, platform);
-                        var success = await AddChannelAsync(channelName, platform, loggingEnabled);
-                        if (!success)
-                        {
-                            _logger.LogWarning("Failed to auto-connect to channel {Channel} on {Platform}", channelName, platform);
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Skipping disabled channel: {Channel} on {Platform}", channelName, platform);
-                        await AddChannelOfflineAsync(channelName, platform);
+                        _logger.LogWarning("Failed to auto-connect to channel {Channel} on {Platform}", channelName, platform);
                     }
                 }
                 
@@ -385,7 +378,7 @@ namespace TwitchChatViewer
                     Name = normalizedChannel,
                     Platform = platform,
                     Status = "Adding...",
-                    LoggingEnabled = loggingEnabled ?? _settingsManager.GetLoggingEnabled(normalizedChannel)
+                    LoggingEnabled = true  // Always enable logging
                 };
                 _followedChannels[channelKey] = followedChannel;
                 
@@ -739,61 +732,6 @@ namespace TwitchChatViewer
             }
             var channelName = ExtractChannelName(channelKey);
             ChannelError?.Invoke(this, (channelName, error));
-        }public async Task UpdateChannelLoggingAsync(string channelName, bool loggingEnabled)
-        {
-            var normalizedChannel = channelName.ToLower().Replace("#", "");
-            
-            // Find the channel to get its platform and generate the correct key
-            var followedChannel = _followedChannels.Values.FirstOrDefault(c => 
-                c.Name.Equals(normalizedChannel, StringComparison.OrdinalIgnoreCase));
-            
-            if (followedChannel == null)
-            {
-                _logger.LogWarning("Channel {Channel} not found in followed channels during logging update", normalizedChannel);
-                return;
-            }
-
-            var channelKey = GenerateChannelKey(normalizedChannel, followedChannel.Platform);
-            var isConnected = followedChannel.IsConnected;
-
-            _logger.LogInformation("Updating logging for {Channel} to {loggingEnabled}. IsConnected: {isConnected}", 
-                normalizedChannel, loggingEnabled, isConnected);
-
-            // Persist the new setting immediately.
-            await _settingsManager.SetLoggingEnabledAsync(normalizedChannel, loggingEnabled);
-            followedChannel.LoggingEnabled = loggingEnabled;
-
-            // If turning logging ON
-            if (loggingEnabled)
-            {
-                // And it was previously disconnected
-                if (!isConnected)
-                {
-                    _logger.LogInformation("Connecting channel {Channel} because logging was enabled.", normalizedChannel);
-                    await ConnectChannelAsync(channelKey);
-                }
-            }
-            // If turning logging OFF
-            else
-            {
-                // And it is currently connected
-                if (isConnected)
-                {
-                    _logger.LogInformation("Disconnecting channel {Channel} because logging was disabled.", normalizedChannel);
-                    await DisconnectChannelAsync(channelKey);
-                }
-                else
-                {
-                    // Ensure status is correct even if it was already disconnected.
-                    followedChannel.IsConnected = false;
-                    followedChannel.Status = "OFFLINE";
-                }
-            }            
-            _logger.LogInformation("Final state for channel {Channel}: LoggingEnabled={Enabled}, IsConnected={IsConnected}, Status={Status}", 
-                normalizedChannel, followedChannel.LoggingEnabled, followedChannel.IsConnected, followedChannel.Status);
-            
-            // Fire event to notify subscribers (like MainWindow) that logging status changed
-            ChannelLoggingChanged?.Invoke(this, (normalizedChannel, loggingEnabled));
         }
 
         public async Task<bool> AddChannelOfflineAsync(string channelName, Platform platform = Platform.Twitch)
@@ -815,7 +753,7 @@ namespace TwitchChatViewer
                     Name = normalizedChannel,
                     Platform = platform,
                     Status = "OFFLINE",
-                    LoggingEnabled = false,
+                    LoggingEnabled = true,  // Always enable logging
                     IsConnected = false
                 };
                 _followedChannels[channelKey] = followedChannel;
@@ -885,13 +823,25 @@ namespace TwitchChatViewer
                     }
                     
                     // Connect to platform
+                    _logger.LogInformation("Attempting to connect to {Platform} channel: {Channel}", followedChannel.Platform, extractedChannelName);
                     await existingClient.ConnectAsync(extractedChannelName);
+                    
+                    // If we reach here, the connection was successful
+                    _logger.LogInformation("Successfully connected to {Platform} channel: {Channel}", followedChannel.Platform, extractedChannelName);
+                    
+                    // Ensure the status is updated (OnClientConnected might be called async)
+                    if (!followedChannel.IsConnected)
+                    {
+                        followedChannel.IsConnected = true;
+                        followedChannel.Status = "ONLINE";
+                        _logger.LogInformation("Updated status for {Channel} to ONLINE", extractedChannelName);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 var extractedChannelName = ExtractChannelName(channelKey);
-                _logger.LogError(ex, "Failed to connect channel: {Channel}", extractedChannelName);
+                _logger.LogError(ex, "Failed to connect channel: {Channel} - Error: {Error}", extractedChannelName, ex.Message);
                 if (_followedChannels.TryGetValue(channelKey, out var followedChannel))
                 {
                     followedChannel.Status = "Connection Failed";
@@ -1222,7 +1172,7 @@ namespace TwitchChatViewer
                     Name = normalizedChannel,
                     Platform = platform,
                     Status = "Adding...",
-                    LoggingEnabled = loggingEnabled ?? _settingsManager.GetLoggingEnabled(normalizedChannel)
+                    LoggingEnabled = true  // Always enable logging
                 };
                 _followedChannels[channelKey] = followedChannel;
                 _logger.LogInformation("✓ Step 1: Successfully created followed channel entry for: {Channel}", normalizedChannel);

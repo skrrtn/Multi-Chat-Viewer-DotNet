@@ -154,7 +154,6 @@ namespace TwitchChatViewer
                 _twitchClient.Error += OnError;                // Subscribe to MultiChannelManager events for status updates                _multiChannelManager.ChannelConnected += OnChannelConnected;
                 _multiChannelManager.ChannelDisconnected += OnChannelDisconnected;
                 _multiChannelManager.ChannelRemoved += OnChannelRemoved;
-                _multiChannelManager.ChannelLoggingChanged += OnChannelLoggingChanged;
                 _multiChannelManager.MessageReceived += OnBackgroundMessageReceived;// Load followed channels when window is loaded
                 this.Loaded += MainWindow_Loaded;                // Add scroll event handling for the chat ListBox
                 this.Loaded += (s, e) => {
@@ -705,16 +704,6 @@ namespace TwitchChatViewer
             });
         }
 
-        private void OnChannelLoggingChanged(object sender, (string Channel, bool LoggingEnabled) args)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                UpdateFollowedChannelsStatus();
-                _logger.LogDebug("Status bar updated after logging change for channel: {Channel}, LoggingEnabled: {LoggingEnabled}", 
-                    args.Channel, args.LoggingEnabled);
-            });
-        }
-
         private void UpdateFollowedChannelsStatus()
         {
             try
@@ -814,7 +803,6 @@ namespace TwitchChatViewer
                 _multiChannelManager.ChannelConnected -= OnChannelConnected;
                 _multiChannelManager.ChannelDisconnected -= OnChannelDisconnected;
                 _multiChannelManager.ChannelRemoved -= OnChannelRemoved;
-                _multiChannelManager.ChannelLoggingChanged -= OnChannelLoggingChanged;
                 _multiChannelManager.MessageReceived -= OnBackgroundMessageReceived;
                 
                 // Dispose system tray icon

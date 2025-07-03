@@ -416,17 +416,6 @@
                 
                 <DataGridTextColumn Header="Platform" Binding="{Binding PlatformName}" Width="80" IsReadOnly="True"/>
                 
-                <DataGridTemplateColumn Header="Logging" Width="80">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <CheckBox IsChecked="{Binding LoggingEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      Click="LoggingCheckBox_Click"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                
                 <DataGridTemplateColumn Header="Status" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
