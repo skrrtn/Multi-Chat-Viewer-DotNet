@@ -175,17 +175,7 @@ namespace TwitchChatViewer
                     string errorMessage;
                     if (selectedPlatform == Platform.Kick)
                     {
-                        if (addEx.Message.Contains("credentials"))
-                        {
-                            errorMessage = $"Failed to add Kick channel '{channelName}':\n\n" +
-                                         $"Kick credentials are required. Please provide valid OAuth Client ID and Secret.\n\n" +
-                                         $"To get these credentials:\n" +
-                                         $"1. Go to https://kick.com/developer/applications\n" +
-                                         $"2. Create a new application\n" +
-                                         $"3. Copy the Client ID and Client Secret\n\n" +
-                                         $"Error details: {addEx.Message}";
-                        }
-                        else if (addEx.Message.Contains("not found"))
+                        if (addEx.Message.Contains("not found"))
                         {
                             errorMessage = $"Failed to add Kick channel '{channelName}':\n\n" +
                                          $"The channel '{channelName}' was not found on Kick.com.\n" +
@@ -199,7 +189,8 @@ namespace TwitchChatViewer
                         {
                             errorMessage = $"Failed to add Kick channel '{channelName}':\n\n" +
                                          $"{addEx.Message}\n\n" +
-                                         $"Please check your Kick OAuth credentials and internet connection.";
+                                         $"Please check your internet connection and try again.\n\n" +
+                                         $"Note: Kick OAuth credentials are only needed for sending messages, not for reading chat.";
                         }
                     }
                     else

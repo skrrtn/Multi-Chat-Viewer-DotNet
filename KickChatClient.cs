@@ -13,7 +13,6 @@ namespace TwitchChatViewer
     public class KickChatClient : IChatClient
     {
         private readonly ILogger<KickChatClient> _logger;
-        private readonly KickCredentialsService _credentialsService;
         private IKickClient _kickClient;
         private KickUnofficialApi _kickUnofficialApi;
         private string _currentChannel;
@@ -28,10 +27,9 @@ namespace TwitchChatViewer
         public string CurrentChannel => _currentChannel;
         public bool IsConnected => _isConnected;
 
-        public KickChatClient(ILogger<KickChatClient> logger, KickCredentialsService credentialsService)
+        public KickChatClient(ILogger<KickChatClient> logger)
         {
             _logger = logger;
-            _credentialsService = credentialsService;
             _kickClient = new KickClient(logger);
             _kickUnofficialApi = new KickUnofficialApi(logger: logger);
             

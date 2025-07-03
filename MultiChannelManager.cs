@@ -368,7 +368,7 @@ namespace TwitchChatViewer
                     _logger.LogInformation("Creating Kick client for channel: {Channel}", normalizedChannel);
                     
                     // Create Kick client (credentials are optional for reading public chat)
-                    var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>(), _kickCredentialsService);
+                    var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>());
                     kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(normalizedChannel, message);
                     kickClient.Connected += (sender, channel) => OnClientConnected(normalizedChannel);
                     kickClient.Disconnected += (sender, args) => OnClientDisconnected(normalizedChannel);
@@ -788,7 +788,7 @@ namespace TwitchChatViewer
                         else if (followedChannel.Platform == Platform.Kick)
                         {
                             // Create Kick client (credentials optional for reading public chat)
-                            var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>(), _kickCredentialsService);
+                            var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>());
                             kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(normalizedChannel, message);
                             kickClient.Connected += (sender, channel) => OnClientConnected(normalizedChannel);
                             kickClient.Disconnected += (sender, args) => OnClientDisconnected(normalizedChannel);
