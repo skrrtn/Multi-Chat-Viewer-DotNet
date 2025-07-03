@@ -272,12 +272,21 @@ namespace TwitchChatViewer
                     
                     // Get required dependencies from service provider
                     var userMessageService = _serviceProvider.GetRequiredService<UserMessageLookupService>();
-                    var logger = _serviceProvider.GetRequiredService<ILogger<UserMessagesWindow>>();                    // Create UserMessagesWindow with required dependencies
+                    var logger = _serviceProvider.GetRequiredService<ILogger<UserMessagesWindow>>();
+
+                    // Construct the complete channel identifier including platform
+                    string currentChannelWithPlatform = null;
+                    if (!string.IsNullOrEmpty(CurrentChannel))
+                    {
+                        currentChannelWithPlatform = $"{CurrentChannel.ToLower()}_{CurrentChannelPlatform.ToString().ToLower()}";
+                    }
+
+                    // Create UserMessagesWindow with required dependencies
                     var userMessagesWindow = new UserMessagesWindow(
                         userMessageService,
                         logger,
                         usernameArgs.Username,
-                        CurrentChannel
+                        currentChannelWithPlatform
                     )
                     {
                         Owner = this
