@@ -753,7 +753,7 @@ namespace TwitchChatViewer
                         Username = "System",
                         Message = "Welcome to Multi-Platform Chat Viewer! 📺\n\n" +
                                 "To get started:\n" +
-                                "1. Go to 'Channels' menu → 'Followed Channels'\n" +
+                                "1. Go to 'File' menu → 'Manage Channels'\n" +
                                 "2. Add channels from Twitch or Kick\n" +
                                 "3. Enable multiple channels to view all their chat messages here simultaneously\n\n" +
                                 "You can enable/disable any combination of channels for multi-chat viewing!",
