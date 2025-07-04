@@ -321,6 +321,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>        <!-- Header with Add Channel -->
         <Grid Grid.Row="0" Margin="0,0,0,10">
@@ -370,7 +371,7 @@
                    Visibility="Collapsed"/>
 
         <!-- Multi-Channel Viewing Info -->
-        <TextBlock Grid.Row="1" 
+        <TextBlock Grid.Row="2" 
                    Text="💡 Enable multiple channels to view all their chat messages simultaneously in the main window."
                    Foreground="#90EE90"
                    FontStyle="Italic"
@@ -378,7 +379,7 @@
                    TextWrapping="Wrap"/>
 
         <!-- Channels List -->
-        <DataGrid Grid.Row="2" 
+        <DataGrid Grid.Row="3" 
                   x:Name="ChannelsDataGrid"                  AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
