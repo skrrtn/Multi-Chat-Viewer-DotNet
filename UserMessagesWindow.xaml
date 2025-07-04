@@ -260,6 +260,7 @@
                         Timestamp="{Binding Timestamp}"
                         Username="{Binding Username}"
                         IsSystemMessage="{Binding IsSystemMessage}"
+                        SourcePlatform="{Binding SourcePlatform}"
                         VerticalAlignment="Top"
                         MentionClick="HighlightedTextBlock_MentionClick"/>
                 </StackPanel>

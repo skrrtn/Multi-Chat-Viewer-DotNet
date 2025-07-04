@@ -200,7 +200,8 @@ namespace TwitchChatViewer
                     Message = e.Data.Content ?? string.Empty,
                     Timestamp = e.Data.CreatedAt,
                     IsSystemMessage = false,
-                    Color = GetUserColor(e.Data.Sender?.Username)
+                    Color = GetUserColor(e.Data.Sender?.Username),
+                    SourcePlatform = Platform.Kick  // Set the correct platform for Kick messages
                 };
 
                 // Parse the message for @mentions

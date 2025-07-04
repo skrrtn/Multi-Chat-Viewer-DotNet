@@ -26,7 +26,11 @@ namespace TwitchChatViewer
 
         public static readonly DependencyProperty IsSystemMessageProperty =
             DependencyProperty.Register(nameof(IsSystemMessage), typeof(bool), typeof(HighlightedTextBlock),
-                new PropertyMetadata(false, OnIsSystemMessageChanged));        // Event for username clicks
+                new PropertyMetadata(false, OnIsSystemMessageChanged));
+
+        public static readonly DependencyProperty SourcePlatformProperty =
+            DependencyProperty.Register(nameof(SourcePlatform), typeof(Platform), typeof(HighlightedTextBlock),
+                new PropertyMetadata(Platform.Twitch, OnSourcePlatformChanged));        // Event for username clicks
         public static readonly RoutedEvent UsernameClickEvent = 
             EventManager.RegisterRoutedEvent(nameof(UsernameClick), RoutingStrategy.Bubble, 
                 typeof(RoutedEventHandler), typeof(HighlightedTextBlock));
@@ -76,6 +80,12 @@ namespace TwitchChatViewer
         {
             get => (bool)GetValue(IsSystemMessageProperty);
             set => SetValue(IsSystemMessageProperty, value);
+        }
+
+        public Platform SourcePlatform
+        {
+            get => (Platform)GetValue(SourcePlatformProperty);
+            set => SetValue(SourcePlatformProperty, value);
         }        private RichTextBox _richTextBox;
 
         public HighlightedTextBlock()
@@ -138,6 +148,14 @@ namespace TwitchChatViewer
             {
                 control.UpdateContent();
             }
+        }
+
+        private static void OnSourcePlatformChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is HighlightedTextBlock control)
+            {
+                control.UpdateContent();
+            }
         }        private void UpdateContent()
         {
             _richTextBox.Document.Blocks.Clear();
@@ -170,10 +188,10 @@ namespace TwitchChatViewer
             paragraph.Inlines.Add(timestampRun);
 
             // Add space after timestamp
-            paragraph.Inlines.Add(new Run(" "));            // Create username run with click functionality
+            paragraph.Inlines.Add(new Run(" "));            // Create username run with click functionality and platform-based coloring
             var usernameBrush = IsSystemMessage ? 
                 new SolidColorBrush(Color.FromRgb(220, 220, 170)) : // #dcdcaa for system messages
-                new SolidColorBrush(Color.FromRgb(86, 156, 214));   // #569cd6 for regular messages
+                GetPlatformUsernameColor(SourcePlatform);
 
             var usernameRun = new Run(Username)
             {
@@ -245,6 +263,16 @@ namespace TwitchChatViewer
             }
 
             _richTextBox.Document.Blocks.Add(paragraph);
+        }
+
+        private static SolidColorBrush GetPlatformUsernameColor(Platform platform)
+        {
+            return platform switch
+            {
+                Platform.Twitch => new SolidColorBrush(Color.FromRgb(100, 65, 165)),
+                Platform.Kick => new SolidColorBrush(Color.FromRgb(83, 255, 26)),
+                _ => new SolidColorBrush(Color.FromRgb(86, 156, 214))                  // #569cd6 - Default blue fallback
+            };
         }
     }    // Custom event args for username clicks
     public class UsernameClickEventArgs(RoutedEvent routedEvent, object source, string username) : RoutedEventArgs(routedEvent, source)

@@ -195,7 +195,8 @@ namespace TwitchChatViewer
                     Username = username,
                     Message = messagePart,
                     Timestamp = DateTime.Now,
-                    IsSystemMessage = false
+                    IsSystemMessage = false,
+                    SourcePlatform = Platform.Twitch  // Set the correct platform for Twitch messages
                 };
 
                 // Parse the message for @mentions
