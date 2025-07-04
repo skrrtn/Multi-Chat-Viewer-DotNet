@@ -189,6 +189,12 @@ namespace TwitchChatViewer
                         if (scrollViewer != null)
                         {
                             scrollViewer.ScrollChanged += ChatScrollViewer_ScrollChanged;
+                            // Add mouse wheel event for immediate scroll detection
+                            scrollViewer.PreviewMouseWheel += ChatScrollViewer_PreviewMouseWheel;
+                            // Add keyboard event for immediate scroll detection
+                            scrollViewer.PreviewKeyDown += ChatScrollViewer_PreviewKeyDown;
+                            // Add mouse down event for immediate scroll detection when clicking on scroll bar
+                            scrollViewer.PreviewMouseDown += ChatScrollViewer_PreviewMouseDown;
                         }
                     }
                 };
@@ -564,7 +570,7 @@ namespace TwitchChatViewer
 
         private void ChatScrollViewer_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
         {
-            // Check if Ctrl key is held down
+            // Check if Ctrl key is held down for font scaling
             if (System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.Control)
             {
                 // Prevent the scroll viewer from scrolling
@@ -586,6 +592,16 @@ namespace TwitchChatViewer
                     ChatFontSize = newFontSize;
                     _logger.LogDebug("Font size changed via Ctrl+Mouse Wheel to: {FontSize}pt", ChatFontSize);
                 }
+                return;
+            }
+
+            // Check if user is scrolling down (negative delta) while auto-scroll is enabled
+            if (e.Delta < 0 && _isAutoScrollEnabled && sender is ScrollViewer scrollViewer)
+            {
+                // User is scrolling down - immediately disable auto-scroll
+                _isAutoScrollEnabled = false;
+                ScrollToTopButtonVisible = true;
+                _logger.LogDebug("Auto-scroll immediately disabled due to downward mouse wheel scroll");
             }
         }        private void OnMessageReceived(object sender, ChatMessage message)
         {
@@ -1291,8 +1307,8 @@ namespace TwitchChatViewer
         }        private void ChatScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {            if (sender is not ScrollViewer scrollViewer) return;
 
-            // Check if user has scrolled away from the top
-            const double scrollThreshold = 10.0; // Allow some tolerance
+            // Check if user has scrolled away from the top - use more sensitive threshold
+            const double scrollThreshold = 1.0; // Very sensitive - any scroll away from top
             bool isAtTop = scrollViewer.VerticalOffset <= scrollThreshold;
 
             if (!isAtTop && _isAutoScrollEnabled)
@@ -1556,6 +1572,44 @@ namespace TwitchChatViewer
                 }
                 return _chatScrollViewer;
             } 
+        }
+
+        private void ChatScrollViewer_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            // Check if user is pressing keys that would scroll down while auto-scroll is enabled
+            if (_isAutoScrollEnabled)
+            {
+                bool isScrollDownKey = e.Key == System.Windows.Input.Key.Down ||
+                                     e.Key == System.Windows.Input.Key.PageDown ||
+                                     e.Key == System.Windows.Input.Key.End;
+
+                if (isScrollDownKey)
+                {
+                    // User is trying to scroll down - immediately disable auto-scroll
+                    _isAutoScrollEnabled = false;
+                    ScrollToTopButtonVisible = true;
+                    _logger.LogDebug("Auto-scroll immediately disabled due to navigation key: {Key}", e.Key);
+                }
+            }
+        }
+
+        private void ChatScrollViewer_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // Check if user clicked on scroll bar area while auto-scroll is enabled
+            if (_isAutoScrollEnabled && sender is ScrollViewer scrollViewer)
+            {
+                var mousePos = e.GetPosition(scrollViewer);
+                var scrollBarWidth = SystemParameters.VerticalScrollBarWidth;
+                
+                // Check if click is in the scroll bar area (right side of the scroll viewer)
+                if (mousePos.X > scrollViewer.ActualWidth - scrollBarWidth)
+                {
+                    // User clicked on scroll bar - disable auto-scroll immediately
+                    _isAutoScrollEnabled = false;
+                    ScrollToTopButtonVisible = true;
+                    _logger.LogDebug("Auto-scroll immediately disabled due to scroll bar interaction");
+                }
+            }
         }
     }
 }
