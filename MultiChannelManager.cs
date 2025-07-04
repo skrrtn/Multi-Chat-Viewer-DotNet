@@ -340,6 +340,19 @@ namespace TwitchChatViewer
                 return false; // This will be handled better in the UI layer
             }
 
+            // Check if trying to add a Kick channel when one already exists
+            if (platform == Platform.Kick)
+            {
+                var existingKickChannels = _followedChannels.Values.Where(c => c.Platform == Platform.Kick).ToList();
+                if (existingKickChannels.Count > 0)
+                {
+                    var existingChannel = existingKickChannels.First();
+                    _logger.LogWarning("Cannot add Kick channel {Channel} - only one Kick channel can be monitored at a time. Existing channel: {ExistingChannel}", 
+                        normalizedChannel, existingChannel.Name);
+                    throw new InvalidOperationException($"Only one Kick channel can be monitored at a time due to library limitations. Please remove '{existingChannel.Name}' before adding '{normalizedChannel}'.");
+                }
+            }
+
             FollowedChannel followedChannel = null;
             IChatClient client = null;
             ChatDatabaseService database = null;
@@ -402,17 +415,20 @@ namespace TwitchChatViewer
                 }
                 else if (platform == Platform.Kick)
                 {
-                    _logger.LogInformation("Creating Kick client for channel: {Channel}", normalizedChannel);
+                    var existingKickChannels = _followedChannels.Values.Count(c => c.Platform == Platform.Kick);
+                    _logger.LogInformation("Creating Kick client for channel: {Channel} (this will be Kick channel #{Number})", normalizedChannel, existingKickChannels + 1);
                     
                     // Create Kick client (credentials are optional for reading public chat)
                     var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>());
+                    _logger.LogInformation("Created KickChatClient for {Channel} with InstanceId: {InstanceId}", normalizedChannel, kickClient.InstanceId);
+                    
                     kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
                     kickClient.Connected += (sender, channel) => OnClientConnected(channelKey);
                     kickClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
                     kickClient.Error += (sender, error) => OnClientError(channelKey, error);
                     client = kickClient;
                     
-                    _logger.LogInformation("Kick client created successfully for channel: {Channel}", normalizedChannel);
+                    _logger.LogInformation("Kick client created successfully for channel: {Channel} (instance created)", normalizedChannel);
                 }
                 
                 _clients[channelKey] = client;
@@ -711,9 +727,52 @@ namespace TwitchChatViewer
                 followedChannel.Status = "ONLINE";
             }
             var channelName = ExtractChannelName(channelKey);
+            
+            // Enhanced logging for Kick channel connections
+            if (channelKey.Contains("_Kick"))
+            {
+                LogConnectedClientsStatus($"After connecting {channelName}");
+            }
+            
             ChannelConnected?.Invoke(this, channelName);
         }
-
+        
+        /// <summary>
+        /// Log the status of all connected clients for debugging multiple connections
+        /// </summary>
+        private void LogConnectedClientsStatus(string context)
+        {
+            var connectedClients = _clients.Where(kvp => kvp.Value.IsConnected).ToList();
+            var kickConnections = connectedClients.Where(kvp => kvp.Key.Contains("_Kick")).ToList();
+            var twitchConnections = connectedClients.Where(kvp => kvp.Key.Contains("_Twitch")).ToList();
+            
+            _logger.LogInformation("=== CLIENT CONNECTION STATUS ({Context}) ===", context);
+            _logger.LogInformation("Total connected clients: {Total} (Kick: {KickCount}, Twitch: {TwitchCount})", 
+                connectedClients.Count, kickConnections.Count, twitchConnections.Count);
+            
+            if (kickConnections.Any())
+            {
+                _logger.LogInformation("Kick connections:");
+                foreach (var kvp in kickConnections)
+                {
+                    var channelName = ExtractChannelName(kvp.Key);
+                    var clientInstance = kvp.Value is KickChatClient kickClient ? $" (InstanceId: {kickClient.InstanceId})" : "";
+                    _logger.LogInformation("  - {Channel}: Connected{InstanceId}", channelName, clientInstance);
+                }
+            }
+            
+            if (twitchConnections.Any())
+            {
+                _logger.LogInformation("Twitch connections:");
+                foreach (var kvp in twitchConnections)
+                {
+                    var channelName = ExtractChannelName(kvp.Key);
+                    _logger.LogInformation("  - {Channel}: Connected", channelName);
+                }
+            }
+            _logger.LogInformation("=== END CLIENT STATUS ===");
+        }
+        
         private void OnClientDisconnected(string channelKey)
         {
             var channelName = ExtractChannelName(channelKey);
@@ -752,6 +811,19 @@ namespace TwitchChatViewer
             {
                 _logger.LogWarning("Channel {Channel} on {Platform} is already being followed", normalizedChannel, platform);
                 return false;
+            }
+
+            // Check if trying to add a Kick channel when one already exists
+            if (platform == Platform.Kick)
+            {
+                var existingKickChannels = _followedChannels.Values.Where(c => c.Platform == Platform.Kick).ToList();
+                if (existingKickChannels.Count > 0)
+                {
+                    var existingChannel = existingKickChannels.First();
+                    _logger.LogWarning("Cannot add Kick channel {Channel} - only one Kick channel can be monitored at a time. Existing channel: {ExistingChannel}", 
+                        normalizedChannel, existingChannel.Name);
+                    throw new InvalidOperationException($"Only one Kick channel can be monitored at a time due to library limitations. Please remove '{existingChannel.Name}' before adding '{normalizedChannel}'.");
+                }
             }
 
             try
@@ -1144,6 +1216,24 @@ namespace TwitchChatViewer
                 };
             }
 
+            // Check if trying to add a Kick channel when one already exists
+            if (platform == Platform.Kick)
+            {
+                var existingKickChannels = _followedChannels.Values.Where(c => c.Platform == Platform.Kick).ToList();
+                if (existingKickChannels.Count > 0)
+                {
+                    var existingChannel = existingKickChannels.First();
+                    _logger.LogWarning("Cannot add Kick channel {Channel} - only one Kick channel can be monitored at a time. Existing channel: {ExistingChannel}", 
+                        normalizedChannel, existingChannel.Name);
+                    return new ChannelAddResult 
+                    { 
+                        Success = false, 
+                        ErrorMessage = $"Only one Kick channel can be monitored at a time due to library limitations. Please remove '{existingChannel.Name}' before adding '{normalizedChannel}'.",
+                        FailedStep = "Kick Channel Limitation"
+                    };
+                }
+            }
+
             FollowedChannel followedChannel = null;
             IChatClient client = null;
             ChatDatabaseService database = null;
@@ -1316,6 +1406,35 @@ namespace TwitchChatViewer
                     Exception = ex
                 };
             }
+        }
+
+        /// <summary>
+        /// Check if adding another Kick channel would exceed the current limit (1 channel)
+        /// </summary>
+        /// <param name="excludeChannel">Channel to exclude from the count (for reconnection scenarios)</param>
+        /// <returns>True if the limit would be exceeded</returns>
+        private bool WouldExceedKickChannelLimit(string excludeChannel = null)
+        {
+            const int KICK_CHANNEL_LIMIT = 1;
+            
+            var currentKickChannels = _followedChannels.Values
+                .Where(c => c.Platform == Platform.Kick)
+                .Where(c => string.IsNullOrEmpty(excludeChannel) || !c.Name.Equals(excludeChannel, StringComparison.OrdinalIgnoreCase))
+                .Count();
+                
+            return currentKickChannels >= KICK_CHANNEL_LIMIT;
+        }
+        
+        /// <summary>
+        /// Get the names of currently added Kick channels
+        /// </summary>
+        /// <returns>List of Kick channel names</returns>
+        private List<string> GetCurrentKickChannels()
+        {
+            return _followedChannels.Values
+                .Where(c => c.Platform == Platform.Kick)
+                .Select(c => c.Name)
+                .ToList();
         }
     }
 }

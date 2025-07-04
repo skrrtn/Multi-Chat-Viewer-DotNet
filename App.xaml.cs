@@ -76,7 +76,7 @@ namespace TwitchChatViewer
 
             // Register chat clients
             services.AddSingleton<TwitchIrcClient>();
-            services.AddSingleton<KickChatClient>();
+            // Note: KickChatClient is NOT registered as singleton - MultiChannelManager creates instances as needed
             services.AddSingleton<KickCredentialsService>();
             
             services.AddSingleton<ChatDatabaseService>();
@@ -92,7 +92,7 @@ namespace TwitchChatViewer
             services.AddTransient<UserLookupWindow>();
             services.AddSingleton<MainWindow>();
             services.AddSingleton<ILogger<App>>(provider => provider.GetRequiredService<ILoggerFactory>().CreateLogger<App>());
-        }protected override void OnExit(ExitEventArgs e)
+        }        protected override void OnExit(ExitEventArgs e)
         {
             try
             {

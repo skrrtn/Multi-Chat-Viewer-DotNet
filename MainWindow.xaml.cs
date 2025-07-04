@@ -395,10 +395,25 @@ namespace TwitchChatViewer
                 var existingChannel = followedChannels.FirstOrDefault(c => c.Name.Equals(channelName, StringComparison.OrdinalIgnoreCase) && c.Platform == platform);                if (existingChannel == null)
                 {
                     _logger.LogInformation("Adding channel {Channel} to followed channels for background logging", channelName);
-                    var success = await _multiChannelManager.AddChannelAsync(channelName, platform, true); // Enable logging
-                    if (!success)
+                    try
                     {
-                        _logger.LogWarning("Failed to add channel {Channel} for background logging", channelName);
+                        var success = await _multiChannelManager.AddChannelAsync(channelName, platform, true); // Enable logging
+                        if (!success)
+                        {
+                            _logger.LogWarning("Failed to add channel {Channel} for background logging", channelName);
+                        }
+                    }
+                    catch (InvalidOperationException ex) when (ex.Message.Contains("Only one Kick channel"))
+                    {
+                        _logger.LogWarning("Cannot add Kick channel {Channel}: {Error}", channelName, ex.Message);
+                        System.Windows.MessageBox.Show(ex.Message, "Kick Channel Limitation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return; // Exit early since we can't add the channel
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Unexpected error adding channel {Channel} for background logging", channelName);
+                        System.Windows.MessageBox.Show($"Error adding channel '{channelName}': {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return; // Exit early since we can't add the channel
                     }
                 }
                 else

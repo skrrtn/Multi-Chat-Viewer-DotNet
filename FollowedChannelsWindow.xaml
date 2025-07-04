@@ -320,6 +320,7 @@
       <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>        <!-- Header with Add Channel -->
         <Grid Grid.Row="0" Margin="0,0,0,10">
@@ -337,7 +338,8 @@
                       VerticalAlignment="Center" 
                       Width="100" 
                       Margin="0,0,10,0"
-                      Style="{StaticResource DarkComboBoxStyle}">
+                      Style="{StaticResource DarkComboBoxStyle}"
+                      SelectionChanged="PlatformComboBox_SelectionChanged">
                 <ComboBoxItem Content="Twitch" Tag="Twitch" IsSelected="True" Style="{StaticResource DarkComboBoxItemStyle}"/>
                 <ComboBoxItem Content="Kick" Tag="Kick" Style="{StaticResource DarkComboBoxItemStyle}"/>
             </ComboBox>
@@ -357,8 +359,18 @@
             <Button Grid.Column="5" Content="Remove Selected" Click="RemoveChannelButton_Click" 
                     Width="120" Height="35" Margin="5,0" Padding="8,6"
                     Background="#d73502" Foreground="White" BorderBrush="#a02a02"/>
-        </Grid><!-- Channels List -->
-        <DataGrid Grid.Row="1" 
+        </Grid>
+
+        <!-- Kick Channel Limitation Notice -->
+        <TextBlock Grid.Row="1" x:Name="KickLimitationNotice" 
+                   Text="ⓘ Note: Only one Kick channel can be monitored at a time due to library limitations."
+                   Foreground="#FFD700"
+                   FontStyle="Italic"
+                   Margin="0,0,0,10"
+                   Visibility="Collapsed"/>
+
+        <!-- Channels List -->
+        <DataGrid Grid.Row="2" 
                   x:Name="ChannelsDataGrid"                  AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"

@@ -47,8 +47,20 @@ namespace TwitchChatViewer
 
             // Subscribe to window events to refresh channels when window is shown
             this.Activated += FollowedChannelsWindow_Activated;
+            this.Loaded += FollowedChannelsWindow_Loaded;
             
             _logger.LogInformation("Followed Channels window initialized");
+            
+            // Defer the initial notice update to ensure all components are fully loaded
+            this.Dispatcher.BeginInvoke(new Action(() => {
+                UpdateKickLimitationNotice();
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private void FollowedChannelsWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Update the Kick limitation notice after the window is fully loaded
+            UpdateKickLimitationNotice();
         }
 
         private void FollowedChannelsWindow_Activated(object sender, EventArgs e)
@@ -67,6 +79,9 @@ namespace TwitchChatViewer
             {
                 FollowedChannels.Add(channel);
             }            UpdateStatus($"Loaded {existingChannels.Count} followed channels");
+            
+            // Update the Kick limitation notice after refreshing the channels list
+            UpdateKickLimitationNotice();
         }
 
         private async void AddChannelButton_Click(object sender, RoutedEventArgs e)
@@ -140,6 +155,9 @@ namespace TwitchChatViewer
                         
                         ChannelNameTextBox.Clear();
                         
+                        // Update the Kick limitation notice since a new channel was added
+                        UpdateKickLimitationNotice();
+                        
                         // Check if the channel connected successfully or is in retry mode
                         if (followedChannel?.IsConnected == true)
                         {
@@ -170,6 +188,14 @@ namespace TwitchChatViewer
                 {
                     _logger.LogError(addEx, "Exception occurred while adding channel: {Channel}", normalizedChannel);
                     UpdateStatus($"Error adding channel: {channelName}");
+                    
+                    // Handle Kick channel limitation
+                    if (addEx is InvalidOperationException && addEx.Message.Contains("Only one Kick channel"))
+                    {
+                        MessageBox.Show(addEx.Message, "Kick Channel Limitation", 
+                                       MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
                     
                     // Provide more specific error messages for Kick channels
                     string errorMessage;
@@ -279,6 +305,9 @@ namespace TwitchChatViewer
                 {
                     UpdateStatus($"Successfully removed {successCount} {channelWord}");
                 }
+                
+                // Update the Kick limitation notice since channels were removed
+                UpdateKickLimitationNotice();
             }
         }        private void ViewInMainButton_Click(object sender, RoutedEventArgs e)
         {
@@ -426,6 +455,57 @@ namespace TwitchChatViewer
 
                 var messageBoxIcon = failureCount == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning;
                 MessageBox.Show(resultMessage, "Erase Results", MessageBoxButton.OK, messageBoxIcon);
+            }
+        }
+
+        private void PlatformComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateKickLimitationNotice();
+        }
+
+        private void UpdateKickLimitationNotice()
+        {
+            // Ensure all required components are initialized before updating the notice
+            if (_channelManager == null || PlatformComboBox == null)
+            {
+                return;
+            }
+
+            try
+            {
+                // Use FindName to safely access the XAML control
+                var kickLimitationNotice = FindName("KickLimitationNotice") as TextBlock;
+                if (kickLimitationNotice == null)
+                {
+                    return; // Control not yet initialized
+                }
+
+                if (PlatformComboBox.SelectedItem is ComboBoxItem selectedItem)
+                {
+                    var isKickSelected = selectedItem.Tag?.ToString() == "Kick";
+                    var hasExistingKickChannel = _channelManager.GetFollowedChannels().Any(c => c.Platform == Platform.Kick);
+                    
+                    // Show the notice if Kick is selected or if there's already a Kick channel
+                    kickLimitationNotice.Visibility = (isKickSelected || hasExistingKickChannel) ? Visibility.Visible : Visibility.Collapsed;
+                    
+                    // Update the notice text based on the situation
+                    if (hasExistingKickChannel && isKickSelected)
+                    {
+                        var existingKickChannel = _channelManager.GetFollowedChannels().First(c => c.Platform == Platform.Kick);
+                        kickLimitationNotice.Text = $"ⓘ Note: Only one Kick channel can be monitored at a time. Currently monitoring: {existingKickChannel.Name}";
+                        kickLimitationNotice.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 165, 0)); // Orange
+                    }
+                    else if (isKickSelected)
+                    {
+                        kickLimitationNotice.Text = "ⓘ Note: Only one Kick channel can be monitored at a time due to library limitations.";
+                        kickLimitationNotice.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 215, 0)); // Gold
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't crash the UI
+                _logger?.LogError(ex, "Error updating Kick limitation notice");
             }
         }
 

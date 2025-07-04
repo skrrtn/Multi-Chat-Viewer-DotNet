@@ -18,6 +18,7 @@ namespace TwitchChatViewer
         private string _currentChannel;
         private bool _isConnected = false;
         private int _chatroomId;
+        private readonly string _instanceId;
 
         public event EventHandler<ChatMessage> MessageReceived;
         public event EventHandler<string> Connected;
@@ -26,68 +27,111 @@ namespace TwitchChatViewer
 
         public string CurrentChannel => _currentChannel;
         public bool IsConnected => _isConnected;
+        
+        /// <summary>
+        /// Gets the unique instance ID for this KickChatClient for debugging purposes
+        /// </summary>
+        public string InstanceId => _instanceId;
 
         public KickChatClient(ILogger<KickChatClient> logger)
         {
             _logger = logger;
-            _kickClient = new KickClient(logger);
             _kickUnofficialApi = new KickUnofficialApi(logger: logger);
+            _instanceId = Guid.NewGuid().ToString("N")[0..8];
             
-            _kickClient.OnMessage += OnKickChatMessage;
-            _kickClient.OnConnected += OnKickConnected;
-            _kickClient.OnDisconnected += OnKickDisconnected;
+            // Don't create the KickClient in constructor - create it when needed for better isolation
+            _logger.LogInformation("[{InstanceId}] KickChatClient instance created - client will be created on connect", _instanceId);
         }
 
         public async Task ConnectAsync(string channel)
         {
             try
             {
-                if (_isConnected)
+                // Check if we're already connected to this specific channel
+                if (_isConnected && _currentChannel == channel.ToLower())
                 {
-                    _logger.LogInformation("Disconnecting from previous Kick channel before connecting to new one");
+                    _logger.LogInformation("[{InstanceId}] Already connected to Kick channel: {Channel}", _instanceId, channel);
+                    return;
+                }
+
+                // Only disconnect if we're connected to a different channel
+                if (_isConnected && _currentChannel != channel.ToLower())
+                {
+                    _logger.LogInformation("[{InstanceId}] Disconnecting from previous Kick channel '{PreviousChannel}' before connecting to '{NewChannel}'", _instanceId, _currentChannel, channel);
                     await DisconnectAsync();
                 }
 
-                // Ensure we have a fresh client instance
-                if (_kickClient == null)
+                // Always create a fresh client instance for each new connection to ensure complete isolation
+                _logger.LogInformation("[{InstanceId}] Creating new Kick client instance for channel: {Channel}", _instanceId, channel);
+                
+                // Dispose the old client if it exists
+                if (_kickClient != null)
                 {
-                    _logger.LogInformation("Creating new Kick client instance");
-                    _kickClient = new KickClient(_logger);
-                    _kickClient.OnMessage += OnKickChatMessage;
-                    _kickClient.OnConnected += OnKickConnected;
-                    _kickClient.OnDisconnected += OnKickDisconnected;
+                    try
+                    {
+                        _kickClient.OnMessage -= OnKickChatMessage;
+                        _kickClient.OnConnected -= OnKickConnected;
+                        _kickClient.OnDisconnected -= OnKickDisconnected;
+                        await _kickClient.DisconnectAsync();
+                        
+                        // Try to dispose if the client implements IDisposable
+                        if (_kickClient is IDisposable disposableClient)
+                        {
+                            disposableClient.Dispose();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "[{InstanceId}] Error disposing previous KickClient for channel: {Channel}", _instanceId, _currentChannel);
+                    }
                 }
+                
+                // Create a completely new KickClient instance with maximum isolation
+                _kickClient = new KickClient(_logger);
+                _kickClient.OnMessage += OnKickChatMessage;
+                _kickClient.OnConnected += OnKickConnected;
+                _kickClient.OnDisconnected += OnKickDisconnected;
 
                 _currentChannel = channel.ToLower();
-                _logger.LogInformation("Connecting to Kick channel: {Channel}...", _currentChannel);
+                _logger.LogInformation("[{InstanceId}] Connecting to Kick channel: {Channel}...", _instanceId, _currentChannel);
 
                 // Get chatroom ID using unofficial API (this is the correct ID for websocket connection)
-                _logger.LogInformation("Getting chatroom information for Kick channel: {Channel}", _currentChannel);
+                _logger.LogInformation("[{InstanceId}] Getting chatroom information for Kick channel: {Channel}", _instanceId, _currentChannel);
                 
                 var chatroomResponse = await _kickUnofficialApi.Channels.GetChatroomAsync(_currentChannel);
                 if (chatroomResponse == null)
                 {
                     var errorMessage = $"Channel '{_currentChannel}' not found on Kick. Please verify the channel name exists and is public.";
-                    _logger.LogError(errorMessage);
+                    _logger.LogError("[{InstanceId}] {ErrorMessage}", _instanceId, errorMessage);
                     throw new Exception(errorMessage);
                 }
 
                 _chatroomId = chatroomResponse.Id;
-                _logger.LogInformation("Retrieved chatroom ID {ChatroomId} for channel {Channel}", _chatroomId, _currentChannel);
+                _logger.LogInformation("[{InstanceId}] Retrieved chatroom ID {ChatroomId} for channel {Channel}", _instanceId, _chatroomId, _currentChannel);
 
-                // Connect to chat using the official client
-                _logger.LogInformation("Connecting to Kick chatroom {ChatroomId}", _chatroomId);
+                // Connect to chat using the official client with enhanced isolation
+                _logger.LogInformation("[{InstanceId}] Connecting to Kick chatroom {ChatroomId} for channel {Channel}", _instanceId, _chatroomId, _currentChannel);
+                
+                // First, set up the chatroom listener
                 await _kickClient.ListenToChatRoomAsync(_chatroomId);
+                
+                // Add a significant delay to prevent any potential race conditions or library-level conflicts
+                // This is especially important when connecting to multiple Kick channels
+                var delayMs = 1000 + (new Random().Next(500, 1500)); // Random delay between 1.5-2.5 seconds
+                _logger.LogInformation("[{InstanceId}] Adding random delay of {DelayMs}ms before connecting to prevent conflicts", _instanceId, delayMs);
+                await Task.Delay(delayMs);
+                
+                // Then connect the client
                 await _kickClient.ConnectAsync();
 
                 // Wait a moment for the connection to establish and OnKickConnected to be called
-                _logger.LogInformation("Kick connection initiated for channel: {Channel}, waiting for connection confirmation...", _currentChannel);
+                _logger.LogInformation("[{InstanceId}] Kick connection initiated for channel: {Channel}, waiting for connection confirmation...", _instanceId, _currentChannel);
                 
-                // Wait up to 10 seconds for the connection to be confirmed
-                var timeout = DateTime.Now.AddSeconds(10);
+                // Wait up to 20 seconds for the connection to be confirmed (increased timeout for multiple connections)
+                var timeout = DateTime.Now.AddSeconds(20);
                 while (!_isConnected && DateTime.Now < timeout)
                 {
-                    await Task.Delay(100);
+                    await Task.Delay(300); // Increased delay to reduce CPU usage
                 }
 
                 if (!_isConnected)
@@ -95,12 +139,12 @@ namespace TwitchChatViewer
                     throw new Exception($"Connection to Kick channel '{_currentChannel}' timed out - no connection confirmation received");
                 }
 
-                _logger.LogInformation("Successfully confirmed connection to Kick channel: {Channel}", _currentChannel);
+                _logger.LogInformation("[{InstanceId}] Successfully confirmed connection to Kick channel: {Channel}", _instanceId, _currentChannel);
             }
             catch (Exception ex)
             {
                 var errorMessage = $"Failed to connect to Kick channel '{_currentChannel}': {ex.Message}";
-                _logger.LogError(ex, errorMessage);
+                _logger.LogError(ex, "[{InstanceId}] {ErrorMessage}", _instanceId, errorMessage);
                 Error?.Invoke(this, errorMessage);
                 throw new Exception(errorMessage, ex);
             }
@@ -112,23 +156,36 @@ namespace TwitchChatViewer
             {
                 if (_kickClient != null)
                 {
-                    // Unsubscribe from events
+                    _logger.LogInformation("[{InstanceId}] Disconnecting from Kick channel: {Channel}", _instanceId, _currentChannel);
+                    
+                    // Unsubscribe from events first
                     _kickClient.OnMessage -= OnKickChatMessage;
                     _kickClient.OnConnected -= OnKickConnected;
                     _kickClient.OnDisconnected -= OnKickDisconnected;
 
+                    // Disconnect the client
                     await _kickClient.DisconnectAsync();
+                    
+                    // Try to dispose if the client implements IDisposable
+                    if (_kickClient is IDisposable disposableClient)
+                    {
+                        disposableClient.Dispose();
+                    }
+                    
                     _kickClient = null;
                 }
 
                 _isConnected = false;
-                _logger.LogInformation("Disconnected from Kick channel: {Channel}", _currentChannel);
+                _logger.LogInformation("[{InstanceId}] Successfully disconnected from Kick channel: {Channel}", _instanceId, _currentChannel);
                 Disconnected?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during Kick disconnect");
+                _logger.LogError(ex, "[{InstanceId}] Error during Kick disconnect for channel: {Channel}", _instanceId, _currentChannel);
                 Error?.Invoke(this, ex.Message);
+                
+                // Still mark as disconnected even if there was an error
+                _isConnected = false;
             }
         }
 
@@ -149,25 +206,27 @@ namespace TwitchChatViewer
                 // Parse the message for @mentions
                 MessageParser.ParseChatMessage(chatMessage);
 
+                _logger.LogDebug("[{InstanceId}] Received message on channel {Channel}: {Username} - {Message}", 
+                    _instanceId, _currentChannel, chatMessage.Username, chatMessage.Message);
                 MessageReceived?.Invoke(this, chatMessage);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing Kick chat message");
+                _logger.LogError(ex, "[{InstanceId}] Error processing Kick chat message", _instanceId);
             }
         }
 
         private void OnKickConnected(object sender, ClientConnectedArgs e)
         {
             _isConnected = true;
-            _logger.LogInformation("Kick chat connected for channel: {Channel}", _currentChannel);
+            _logger.LogInformation("[{InstanceId}] Kick chat connected for channel: {Channel}", _instanceId, _currentChannel);
             Connected?.Invoke(this, _currentChannel);
         }
 
         private void OnKickDisconnected(object sender, EventArgs e)
         {
             _isConnected = false;
-            _logger.LogInformation("Kick chat disconnected for channel: {Channel}", _currentChannel);
+            _logger.LogInformation("[{InstanceId}] Kick chat disconnected for channel: {Channel}", _instanceId, _currentChannel);
             Disconnected?.Invoke(this, EventArgs.Empty);
         }
 
@@ -190,7 +249,15 @@ namespace TwitchChatViewer
 
         public void Dispose()
         {
-            DisconnectAsync().Wait(TimeSpan.FromSeconds(2));
+            try
+            {
+                _logger.LogInformation("[{InstanceId}] Disposing KickChatClient for channel: {Channel}", _instanceId, _currentChannel);
+                DisconnectAsync().Wait(TimeSpan.FromSeconds(3));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[{InstanceId}] Error during KickChatClient disposal for channel: {Channel}", _instanceId, _currentChannel);
+            }
         }
     }
 }
