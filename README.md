@@ -14,14 +14,17 @@ A native Windows application built with C# and WPF that connects to Twitch IRC a
 - **Auto-scrolling**: Chat automatically scrolls to show the latest messages with smart pause when scrolled away
 - **Message Formatting**: Timestamps, usernames, and messages are clearly formatted with proper indentation
 
-### Multi-Channel Management
+### Multi-Channel Management & Viewing
 - **Multiple Channel Monitoring**: Monitor and manage multiple channels from both Twitch and Kick.com simultaneously
+- **Multi-Channel Viewing**: Switch between different channels in the main chat window with "Enable" button in the Multi-View column
+- **Background Channel Monitoring**: Channels continue logging messages in the background while viewing other channels
 - **Platform Selection**: Choose between Twitch and Kick.com when adding new channels
-- **Platform Display**: Clear platform indicators in channel management interface
+- **Platform Display**: Clear platform indicators in channel management interface with platform-specific colors
 - **Followed Channels Window**: Dedicated interface for managing your followed channels across both platforms
-- **Individual Channel Control**: Enable/disable logging per channel, view connection status and statistics
+- **Individual Channel Control**: Enable/disable viewing and logging per channel, view connection status and statistics
 - **Channel Database Management**: Each channel maintains its own SQLite database for message history with platform metadata
-- **Background Connection Management**: Channels can be monitored in the background with automatic reconnection
+- **Real-time Channel Statistics**: View live message counts, last activity times, and database sizes for each channel
+- **Connection Status Monitoring**: Real-time status indicators (ONLINE/OFFLINE) with color-coded display
 
 ### User Interaction & Navigation
 - **Username Click Navigation**: Click on any username to view that user's message history
@@ -134,18 +137,30 @@ The executable will be created in `bin\Release\net8.0-windows\win-x64\publish\`
    - **Release users**: Double-click `TwitchChatViewer.exe`
    - **Developers**: Use `dotnet run` or run from Visual Studio
 2. **Click Options → Followed Channels**: Open the Followed Channels window
-3. **Enter Channel Name**: Type the Twitch channel name (without the # symbol)
-4. **Add Channel**: Click the "Add" button to start monitoring the channel
-5. **View Chat**: Messages will appear in real-time in the chat area
+3. **Enter Channel Name**: Type the Twitch or Kick channel name (without the # symbol for Twitch)
+4. **Select Platform**: Choose Twitch or Kick from the platform dropdown
+5. **Add Channel**: Click the "Add" button to start monitoring the channel
+6. **Enable Viewing**: Click the "Enable" button in the **Multi-View column** to start viewing that channel's chat in the main window
+7. **View Chat**: Messages will appear in real-time in the chat area for the currently viewed channel
 
-### Multi-Channel Management
+### Multi-Channel Workflow
+1. **Add Multiple Channels**: Add several channels from different platforms to monitor simultaneously
+2. **Background Monitoring**: All added channels collect messages in the background, even when not actively viewed
+3. **Switch Between Channels**: Use "Enable" or "Disable" button in the **Multi-View column** to control which channel's chat is displayed in the main window
+4. **Monitor Statistics**: View real-time message counts, connection status, and last activity for all channels
+5. **Manage Logging**: Control which channels save messages to database independently of viewing
+
+### Multi-Channel Management & Viewing
 1. **Access Followed Channels**: Go to Options → Followed Channels
 2. **Select Platform**: Choose between Twitch and Kick.com from the platform dropdown
 3. **Add Channels**: Enter channel names to monitor multiple channels simultaneously
-4. **Platform Indicators**: The platform column shows which service each channel uses
-5. **Toggle Logging**: Enable/disable message logging per channel using checkboxes
-6. **Switch Channels**: Use "View in Main" to switch the main window to a specific channel
-7. **Remove Channels**: Select channels and click "Erase Selected" to remove them
+4. **Platform Indicators**: The platform column shows which service each channel uses with color-coded badges
+5. **Toggle Viewing**: Use "Enable" or "Disable" button in the **Multi-View column** to control which channel is displayed in the main window
+6. **Toggle Logging**: Enable/disable message logging per channel using separate logging controls
+7. **Switch Channels**: Click "Enable" button in the **Multi-View column** to switch viewing to a different channel
+8. **Background Monitoring**: Channels continue collecting messages in the background even when not actively viewed
+9. **Channel Statistics**: Monitor real-time message counts, connection status, and database sizes
+10. **Remove Channels**: Select channels and click "Erase Selected" to remove them and their databases
 
 ### Platform-Specific Usage
 
@@ -158,7 +173,9 @@ The executable will be created in `bin\Release\net8.0-windows\win-x64\publish\`
 1. Select "Kick" from the platform dropdown
 2. Enter the channel name (exact case-sensitive username)
 3. Click "Add" to start monitoring
-4. **Note**: Kick channels may take a few extra seconds to connect as the system resolves the chatroom ID
+4. Click "Enable" button in the **Multi-View column** to start viewing that channel's chat in the main window
+5. **Note**: Kick channels may take a few extra seconds to connect as the system resolves the chatroom ID
+6. **Limitation**: Only one Kick channel can be monitored at a time due to library limitations
 
 ### User Interaction Features
 - **Click Usernames**: Click any username in chat to view that user's complete message history
@@ -172,14 +189,41 @@ The executable will be created in `bin\Release\net8.0-windows\win-x64\publish\`
 - **No User Action Required**: Migration happens automatically - no manual intervention needed
 
 ### Advanced Features
+- **Multi-Channel View Management**: Switch between different channels in the main window while monitoring all in the background
 - **Menu Font Scaling**: Use View → Font Scaling to choose preset sizes (50%-200%)
 - **Ctrl+Scroll Zooming**: Hold Ctrl and scroll mouse wheel to dynamically adjust font size
 - **Auto-Scroll Management**: Chat auto-scrolls to new messages; scroll up to pause, then use the "Scroll to Top" button to resume
+- **Real-time Channel Statistics**: Monitor message rates, connection status, and activity across all followed channels
+- **Independent Channel Controls**: Separate viewing and logging controls for each channel
 
 ### Database and Search Features
-- **View User Statistics**: Double-click users in the User Lookup window to see detailed message history
-- **Channel Statistics**: Monitor message counts, database sizes, and last activity times in the Followed Channels window
-- **Message Persistence**: All messages are automatically saved to local SQLite databases (when logging is enabled)
+- **Multi-Channel Message Storage**: Each channel maintains its own SQLite database with messages collected in the background
+- **View User Statistics**: Double-click users in the User Lookup window to see detailed message history across all channels
+- **Channel Statistics Dashboard**: Monitor message counts, database sizes, and last activity times in the Followed Channels window
+- **Message Persistence**: All messages are automatically saved to local SQLite databases (when logging is enabled per channel)
+- **Cross-Channel User Search**: Search for users across all monitored channels with combined statistics
+
+## Multi-Channel Viewing Feature
+
+The application now supports viewing different channels in the main chat window while monitoring multiple channels in the background:
+
+### How Multi-Channel Viewing Works
+- **Background Monitoring**: All added channels continuously collect and log messages, regardless of which channel you're currently viewing
+- **Active Viewing**: Only one channel's chat is displayed in the main window at a time
+- **Instant Switching**: Use the "Enable" or "Disable" button in the **Multi-View column** to immediately switch to viewing a different channel
+- **Independent Controls**: Viewing and logging can be controlled separately for each channel
+- **Real-time Statistics**: Monitor all channels' activity, connection status, and message counts simultaneously
+
+### Viewing vs. Logging
+- **Viewing Enabled**: Channel's messages are displayed in the main chat window (only one channel at a time)
+- **Logging Enabled**: Channel's messages are saved to the database (can be enabled for multiple channels)
+- **Background Collection**: Messages are collected for all connected channels, regardless of viewing/logging settings
+- **Flexible Configuration**: You can log messages without viewing them, or view without logging
+
+### Platform Limitations
+- **Twitch**: Unlimited channels can be monitored simultaneously
+- **Kick.com**: Only one Kick channel can be monitored at a time due to library limitations
+- **Mixed Platforms**: You can monitor Twitch and Kick channels simultaneously (up to 1 Kick + multiple Twitch)
 
 ## Configuration
 
@@ -208,6 +252,7 @@ The application connects to Twitch's IRC servers using:
 ### Kick.com Connection
 
 The application connects to Kick.com using:
+- **Library**: KICKLib (1.4.3) - Unofficial Kick.com API and WebSocket chat client
 - **API**: Unofficial Kick.com API for chatroom discovery
 - **WebSocket**: Real-time chat connection via WebSocket
 - **Authentication**: Guest connection (no credentials required for reading chat)
@@ -231,13 +276,15 @@ Each channel database includes:
 
 2. **No Messages Appearing**:
    - Verify the channel is active and has viewers chatting
-   - Check that logging is enabled for the channel in Followed Channels
+   - Ensure the channel is enabled for viewing in the Followed Channels window (not just logging)
+   - Check that you've selected the correct channel to view in the main window
    - Check the application logs for any errors
 
 3. **Performance Issues**:
    - The application automatically handles message cleanup (limited to 500 messages in main view)
    - Use "Clear Chat" button to reset if needed
    - Large databases may affect user lookup performance
+   - Monitor multiple channels may increase memory usage - consider disabling viewing for unused channels
 
 4. **User Lookup Issues**:
    - Ensure channels have been monitored for some time to build message history
@@ -256,9 +303,16 @@ Each channel database includes:
 
 7. **Platform-Specific Issues**:
    - **Kick.com channels**: May take longer to connect as the system resolves chatroom IDs
+   - **Kick.com limitation**: Only one Kick channel can be monitored at a time due to library constraints
    - **Platform Detection**: If databases show "Unknown" platform, they will be automatically migrated to the proper format
    - **Mixed Platform Support**: Each database is independent and can be different platforms
    - **Legacy Database**: Existing databases will be automatically migrated to the new format on startup
+
+8. **Multi-Channel Viewing Issues**:
+   - **Channel Not Displaying**: Ensure the channel is enabled for viewing (not just logging) using the "Enable" button in the **Multi-View column** in Followed Channels
+   - **Missing Background Messages**: Channels collect messages in background even when not viewed - check logging is enabled
+   - **Channel Switching**: Use "Enable" or "Disable" button in the **Multi-View column** to switch between channels for viewing
+   - **Multiple Kick Channels**: Remove existing Kick channel before adding a new one due to platform limitations
 
 8. **Migration Issues**:
    - If automatic migration fails, check that database files are not in use by other applications
@@ -269,24 +323,40 @@ Each channel database includes:
 
 ### Dependencies
 
-- Microsoft.Extensions.DependencyInjection (8.0.0)
-- Microsoft.Extensions.Logging (8.0.0)
-- Microsoft.Extensions.Logging.Console (8.0.0)
-- Microsoft.Data.Sqlite (8.0.0) - For local message storage
-- System.Text.Json - For unified configuration file management
+- **KickLib** (1.4.3) - Unofficial Kick.com API and WebSocket chat client library
+- **Microsoft.Extensions.DependencyInjection** (9.0.5)
+- **Microsoft.Extensions.Logging** (9.0.5)
+- **Microsoft.Extensions.Logging.Console** (9.0.5)
+- **Microsoft.Data.Sqlite** (9.0.6) - For local message storage
+- **System.Security.Cryptography.ProtectedData** (9.0.0) - For secure credential storage
 
 ### Project Architecture
 
 The application follows a modular architecture with dependency injection:
 
-- **MainWindow**: Primary UI for chat display and user interaction
-- **MultiChannelManager**: Handles multiple IRC connections and channel management
+- **MainWindow**: Primary UI for chat display and user interaction with multi-channel viewing support
+- **MultiChannelManager**: Handles multiple IRC connections, channel management, and background message collection
 - **TwitchIrcClient**: Manages individual Twitch IRC connections
-- **ChatDatabaseService**: Handles SQLite database operations for message persistence
-- **UserFilterService**: Manages user blacklist functionality
-- **UserMessageLookupService**: Provides user search and message history features
+- **KickChatClient**: Manages individual Kick.com WebSocket connections with automatic chatroom discovery
+- **ChatDatabaseService**: Handles SQLite database operations for message persistence per channel
+- **UserFilterService**: Manages user blacklist functionality across all channels
+- **UserMessageLookupService**: Provides user search and message history features across multiple channels
 - **UnifiedConfigurationService**: Manages all application settings in a single `appsettings.json` file
-- **FollowedChannelsStorage**: Manages the list of followed channels (integrated with unified configuration)
+- **FollowedChannelsStorage**: Manages the list of followed channels with viewing and logging preferences
+- **FollowedChannelsWindow**: Dedicated UI for multi-channel management with real-time statistics
+
+## Acknowledgments
+
+This project uses several open-source libraries that make it possible:
+
+### KICKLib
+- **Library**: [KICKLib](https://github.com/Bukk94/KickLib) by the KickLib team
+- **Version**: 1.4.3
+- **Purpose**: Provides unofficial API access and WebSocket chat functionality for Kick.com
+- **License**: MIT License
+- **Special Thanks**: To the KickLib developers for creating and maintaining this excellent library that enables Kick.com chat integration
+
+The Kick.com chat functionality in this application is entirely powered by KICKLib. Without their work, multi-platform chat viewing would not be possible.
 
 ## License
 
