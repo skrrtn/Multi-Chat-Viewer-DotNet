@@ -6,7 +6,7 @@
         Height="600" 
         Width="800"
         MinHeight="400"
-        MinWidth="600"
+        MinWidth="400"
         WindowStartupLocation="CenterScreen"
         Icon="logo.ico">    <Window.Resources>
         <!-- Converters -->
