@@ -126,6 +126,30 @@ namespace TwitchChatViewer
                 _pendingMessageCount = value;
                 OnPropertyChanged(nameof(PendingMessageCount));
             }
+        }
+
+        // Loading state properties
+        private bool _isLoading = true;
+        private string _loadingMessage = "Loading databases...";
+
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set
+            {
+                _isLoading = value;
+                OnPropertyChanged(nameof(IsLoading));
+            }
+        }
+
+        public string LoadingMessage
+        {
+            get => _loadingMessage;
+            set
+            {
+                _loadingMessage = value;
+                OnPropertyChanged(nameof(LoadingMessage));
+            }
         }        public MainWindow(TwitchIrcClient twitchClient, ChatDatabaseService databaseService, 
                           MultiChannelManager multiChannelManager, UserFilterService userFilterService,
                           IServiceProvider serviceProvider, ILogger<MainWindow> logger)
@@ -665,6 +689,10 @@ namespace TwitchChatViewer
         {
             try
             {
+                // Ensure we start in loading state (should already be true from initialization)
+                IsLoading = true;
+                LoadingMessage = "Checking database migrations...";
+                
                 _logger.LogInformation("Checking for database migrations...");
                 
                 // Run database migration before loading channels
@@ -690,8 +718,11 @@ namespace TwitchChatViewer
                     _logger.LogDebug("No database directory found, skipping migration");
                 }
                 
+                LoadingMessage = "Loading followed channels...";
                 _logger.LogInformation("Loading followed channels from storage...");
                 await _multiChannelManager.LoadFollowedChannelsAsync();
+                
+                LoadingMessage = "Connecting channels...";
                 
                 // Update the status after loading channels
                 UpdateFollowedChannelsStatus();
@@ -700,6 +731,7 @@ namespace TwitchChatViewer
                 var enabledChannels = _multiChannelManager.GetFollowedChannels().Where(c => c.ViewingEnabled).ToList();
                 foreach (var channel in enabledChannels.Where(c => !c.IsConnected))
                 {
+                    LoadingMessage = $"Connecting to {channel.Name}...";
                     _logger.LogInformation("Reconnecting viewing-enabled channel on startup: {Channel} ({Platform})", channel.Name, channel.Platform);
                     try
                     {
@@ -731,10 +763,17 @@ namespace TwitchChatViewer
                     MessageParser.ParseChatMessage(welcomeMessage);
                     ChatMessages.Insert(0, welcomeMessage);
                 }
+                
+                // Loading complete - enable user interface
+                IsLoading = false;
+                _logger.LogInformation("Application startup completed successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading followed channels on startup");
+                // Ensure we exit loading state even on error
+                IsLoading = false;
+                LoadingMessage = "Error occurred during startup";
             }
         }
 

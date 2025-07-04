@@ -8,11 +8,12 @@
         MinHeight="400"
         MinWidth="600"
         WindowStartupLocation="CenterScreen"
-        Icon="logo.ico"><Window.Resources>
+        Icon="logo.ico">    <Window.Resources>
         <!-- Converters -->
         <local:MessagePartsToInlinesConverter x:Key="MessagePartsToInlinesConverter"/>
         <local:UnderscoreToSpaceConverter x:Key="UnderscoreToSpaceConverter"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         
         <!-- Dark Mode ScrollBar Styles -->
         <Style x:Key="DarkScrollBarPageButton" TargetType="{x:Type RepeatButton}">
@@ -276,7 +277,19 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>        <!-- Menu Bar -->        <Menu Grid.Row="0" Background="#2d2d30" Foreground="White">            <MenuItem Header="_File">
+        </Grid.RowDefinitions>        <!-- Menu Bar -->        
+        <Menu Grid.Row="0" Background="#2d2d30" Foreground="White">
+            <Menu.Style>
+                <Style TargetType="Menu">
+                    <Setter Property="IsEnabled" Value="True"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                            <Setter Property="IsEnabled" Value="False"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Menu.Style>
+            <MenuItem Header="_File">
                 <MenuItem Header="_Manage Channels" Click="FollowedChannelsMenuItem_Click"/>
                 <Separator/>
                 <MenuItem Header="_Filter Users" Click="UserFiltersMenuItem_Click"/>
@@ -353,6 +366,7 @@
                     FontSize="13"
                     BorderThickness="0"
                     Visibility="{Binding ScrollToTopButtonVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBooleanConverter}}"
                     Cursor="Hand">
                 <Button.Content>
                     <StackPanel Orientation="Horizontal">
@@ -413,5 +427,51 @@
                 </TextBlock>
             </Grid>
         </Border>
+        
+        <!-- Loading Overlay -->
+        <Grid Grid.RowSpan="3" Background="#CC000000" Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- Simple Loading Spinner -->
+                <Grid Width="60" Height="60" Margin="0,0,0,20">
+                    <Ellipse Width="60" Height="60" 
+                             Stroke="#4CAF50" 
+                             StrokeThickness="6" 
+                             StrokeDashArray="15,5"
+                             StrokeDashOffset="0">
+                        <Ellipse.RenderTransform>
+                            <RotateTransform x:Name="LoadingRotation"/>
+                        </Ellipse.RenderTransform>
+                        <Ellipse.Triggers>
+                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="LoadingRotation"
+                                            Storyboard.TargetProperty="Angle"
+                                            From="0" To="360" 
+                                            Duration="0:0:1.5"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Ellipse.Triggers>
+                    </Ellipse>
+                </Grid>
+                
+                <!-- Loading Message -->
+                <TextBlock Text="{Binding LoadingMessage}" 
+                           Foreground="White" 
+                           FontSize="16" 
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+                           
+                <TextBlock Text="Please wait..." 
+                           Foreground="#CCCCCC" 
+                           FontSize="12" 
+                           Margin="0,5,0,0"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>
