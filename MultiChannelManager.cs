@@ -18,6 +18,7 @@ namespace TwitchChatViewer
         private DateTime _lastMessageTime;
         private string _status = "Disconnected";
         private bool _loggingEnabled = true; // Default to enabled
+        private bool _viewingEnabled = false; // Default to disabled for viewing
         private long _databaseSize;
         private Platform _platform = Platform.Twitch; // Default to Twitch
 
@@ -64,7 +65,25 @@ namespace TwitchChatViewer
                 _loggingEnabled = value;
                 OnPropertyChanged(nameof(LoggingEnabled));
             }
-        }        public int MessageCount
+        }
+
+        public bool ViewingEnabled
+        {
+            get => _viewingEnabled;
+            set
+            {
+                _viewingEnabled = value;
+                OnPropertyChanged(nameof(ViewingEnabled));
+                OnPropertyChanged(nameof(ViewingButtonText));
+                OnPropertyChanged(nameof(ViewingButtonColor));
+            }
+        }
+
+        public string ViewingButtonText => ViewingEnabled ? "Disable" : "Enable";
+        
+        public string ViewingButtonColor => ViewingEnabled ? "#d73502" : "#007ACC";
+
+        public int MessageCount
         {
             get => _messageCount;
             set

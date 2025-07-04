@@ -18,5 +18,7 @@ namespace TwitchChatViewer
         public bool IsSystemMessage { get; set; } = false;
         public string Color { get; set; } = "#569cd6"; // Default blue color for usernames
         public List<MessagePart> ParsedMessage { get; set; } = [];
+        public string SourceChannel { get; set; } = string.Empty; // Channel where this message originated
+        public Platform SourcePlatform { get; set; } = Platform.Twitch; // Platform where this message originated
     }
 }

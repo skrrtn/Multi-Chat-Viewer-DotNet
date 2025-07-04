@@ -18,7 +18,7 @@ namespace TwitchChatViewer
         private readonly DispatcherTimer _updateTimer;
         
         public ObservableCollection<FollowedChannel> FollowedChannels { get; } = [];
-        public event EventHandler<FollowedChannel> SwitchToChannelRequested;        public FollowedChannelsWindow(MultiChannelManager channelManager, ILogger<FollowedChannelsWindow> logger)
+        public event EventHandler<FollowedChannel> ChannelViewingToggled;        public FollowedChannelsWindow(MultiChannelManager channelManager, ILogger<FollowedChannelsWindow> logger)
         {
             InitializeComponent();
             DataContext = this;
@@ -309,12 +309,20 @@ namespace TwitchChatViewer
                 // Update the Kick limitation notice since channels were removed
                 UpdateKickLimitationNotice();
             }
-        }        private void ViewInMainButton_Click(object sender, RoutedEventArgs e)
+        }        private void ToggleViewingButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.DataContext is FollowedChannel selectedChannel)
             {
-                SwitchToChannelRequested?.Invoke(this, selectedChannel);
-                UpdateStatus($"Switching main window to channel: {selectedChannel.Name}");
+                selectedChannel.ViewingEnabled = !selectedChannel.ViewingEnabled;
+                ChannelViewingToggled?.Invoke(this, selectedChannel);
+                
+                var action = selectedChannel.ViewingEnabled ? "Enabled" : "Disabled";
+                var enabledCount = FollowedChannels.Count(c => c.ViewingEnabled);
+                var statusMsg = enabledCount > 1 
+                    ? $"{action} viewing for {selectedChannel.Name} - Now viewing {enabledCount} channels simultaneously"
+                    : $"{action} viewing for channel: {selectedChannel.Name}";
+                
+                UpdateStatus(statusMsg);
             }
         }
 

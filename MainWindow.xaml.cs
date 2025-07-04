@@ -141,13 +141,14 @@ namespace TwitchChatViewer
                 // Enable dark mode title bar
                 DarkModeHelper.EnableDarkMode(this);
                 
-                // Set initial window title
-                UpdateWindowTitle();
-                  _twitchClient = twitchClient;
+                _twitchClient = twitchClient;
                 _databaseService = databaseService;
                 _multiChannelManager = multiChannelManager;
                 _userFilterService = userFilterService;
-                _serviceProvider = serviceProvider;// Subscribe to IRC events
+                _serviceProvider = serviceProvider;
+                
+                // Set initial window title (after _multiChannelManager is assigned)
+                UpdateWindowTitle();// Subscribe to IRC events
                 _twitchClient.MessageReceived += OnMessageReceived;
                 _twitchClient.Connected += OnConnected;
                 _twitchClient.Disconnected += OnDisconnected;
@@ -349,7 +350,7 @@ namespace TwitchChatViewer
                 var followedChannelsWindow = new FollowedChannelsWindow(_multiChannelManager, 
                     _serviceProvider.GetRequiredService<ILogger<FollowedChannelsWindow>>());
                 
-                followedChannelsWindow.SwitchToChannelRequested += OnSwitchToChannelRequested;
+                followedChannelsWindow.ChannelViewingToggled += OnChannelViewingToggled;
                 followedChannelsWindow.Owner = this;
                 followedChannelsWindow.Show();
             }
@@ -364,84 +365,88 @@ namespace TwitchChatViewer
                 var errorWindow = new ErrorWindow(errorDetails);
                 errorWindow.ShowDialog();
             }
-        }        private async void OnSwitchToChannelRequested(object sender, FollowedChannel followedChannel)
+        }        private async void OnChannelViewingToggled(object sender, FollowedChannel followedChannel)
         {
             try
             {
                 var channelName = followedChannel.Name;
                 var platform = followedChannel.Platform;
                 
-                // Disconnect from current channel if connected
-                if (IsConnected)
+                if (followedChannel.ViewingEnabled)
                 {
-                    await _twitchClient.DisconnectAsync();
-                    await _databaseService.CloseConnectionAsync();
-                }                // Clear current chat and reset counters
-                ChatMessages.Clear();
-                CurrentChannelMessageCount = 0;
-                
-                // Clear pending messages when switching channels
-                _pendingMessages.Clear();
-                PendingMessageCount = 0;
-                _isAutoScrollEnabled = true;
-                ScrollToTopButtonVisible = false;
-
-                // Set current channel and platform
-                CurrentChannel = channelName;
-                CurrentChannelPlatform = platform;
-
-                // Ensure this channel is being followed for background logging
-                var followedChannels = _multiChannelManager.GetFollowedChannels();
-                var existingChannel = followedChannels.FirstOrDefault(c => c.Name.Equals(channelName, StringComparison.OrdinalIgnoreCase) && c.Platform == platform);                if (existingChannel == null)
-                {
-                    _logger.LogInformation("Adding channel {Channel} to followed channels for background logging", channelName);
-                    try
+                    _logger.LogInformation("Enabling viewing for channel: {Channel} ({Platform})", channelName, platform);
+                    
+                    // Ensure this channel is being followed for background logging
+                    var followedChannels = _multiChannelManager.GetFollowedChannels();
+                    var existingChannel = followedChannels.FirstOrDefault(c => c.Name.Equals(channelName, StringComparison.OrdinalIgnoreCase) && c.Platform == platform);
+                    
+                    if (existingChannel == null)
                     {
-                        var success = await _multiChannelManager.AddChannelAsync(channelName, platform, true); // Enable logging
-                        if (!success)
+                        _logger.LogInformation("Adding channel {Channel} to followed channels for background logging", channelName);
+                        try
                         {
-                            _logger.LogWarning("Failed to add channel {Channel} for background logging", channelName);
+                            var success = await _multiChannelManager.AddChannelAsync(channelName, platform, true); // Enable logging
+                            if (!success)
+                            {
+                                _logger.LogWarning("Failed to add channel {Channel} for background logging", channelName);
+                                followedChannel.ViewingEnabled = false; // Revert the toggle
+                                return;
+                            }
+                        }
+                        catch (InvalidOperationException ex) when (ex.Message.Contains("Only one Kick channel"))
+                        {
+                            _logger.LogWarning("Cannot add Kick channel {Channel}: {Error}", channelName, ex.Message);
+                            System.Windows.MessageBox.Show(ex.Message, "Kick Channel Limitation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            followedChannel.ViewingEnabled = false; // Revert the toggle
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Unexpected error adding channel {Channel} for background logging", channelName);
+                            System.Windows.MessageBox.Show($"Error adding channel '{channelName}': {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                            followedChannel.ViewingEnabled = false; // Revert the toggle
+                            return;
                         }
                     }
-                    catch (InvalidOperationException ex) when (ex.Message.Contains("Only one Kick channel"))
+                    else if (!existingChannel.IsConnected)
                     {
-                        _logger.LogWarning("Cannot add Kick channel {Channel}: {Error}", channelName, ex.Message);
-                        System.Windows.MessageBox.Show(ex.Message, "Kick Channel Limitation", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return; // Exit early since we can't add the channel
+                        // Channel exists but is not connected - ensure it gets connected for live messages
+                        _logger.LogInformation("Channel {Channel} exists but is not connected. Attempting to connect for live messages...", channelName);
+                        try
+                        {
+                            await _multiChannelManager.RetryConnectionAsync(channelName);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to connect channel {Channel} for live messages", channelName);
+                            // Don't revert viewing - user can still see historical messages
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Unexpected error adding channel {Channel} for background logging", channelName);
-                        System.Windows.MessageBox.Show($"Error adding channel '{channelName}': {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return; // Exit early since we can't add the channel
-                    }
+                    
+                    // Load recent messages for this channel
+                    await LoadRecentMessagesForChannelAsync(channelName, platform);
                 }
                 else
                 {
-                    _logger.LogInformation("Channel {Channel} is already being followed with logging={LoggingEnabled}", 
-                        channelName, existingChannel.LoggingEnabled);
+                    _logger.LogInformation("Disabling viewing for channel: {Channel} ({Platform})", channelName, platform);
+                    
+                    // Remove messages from this channel from the display
+                    RemoveChannelMessagesFromDisplay(channelName, platform);
                 }
-
-                // Initialize database for this channel (for reading recent messages)
-                await _databaseService.InitializeDatabaseAsync(channelName, platform);
                 
-                // Load recent messages from database
-                await LoadRecentMessagesAsync();
+                // Update status and stats
+                UpdateMultiChannelStats();
+                UpdateMultiChannelStatus();
+                UpdateWindowTitle();
                 
-                // DO NOT connect the main window's IRC client - rely on background client only
-                // This prevents duplicate connections and ensures only background client logs to database
-                
-                // Simulate connected state for UI purposes since background client is handling the connection
-                IsConnected = true;
-                
-                // Update current channel stats immediately
-                await UpdateCurrentChannelStatsAsync();
-                
-                _logger.LogInformation("Switched main window to channel: {Channel} (using background client only)", channelName);
+                // If this is the first channel enabled, ensure we're "connected"
+                var anyChannelEnabled = _multiChannelManager.GetFollowedChannels().Any(c => c.ViewingEnabled);
+                IsConnected = anyChannelEnabled;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error switching to channel: {Channel}", followedChannel?.Name ?? "unknown");
+                _logger.LogError(ex, "Error toggling viewing for channel: {Channel}", followedChannel?.Name ?? "unknown");
+                followedChannel.ViewingEnabled = false; // Revert on error
             }
         }        private void ClearButton_Click(object sender, RoutedEventArgs e)
         {
@@ -690,6 +695,42 @@ namespace TwitchChatViewer
                 
                 // Update the status after loading channels
                 UpdateFollowedChannelsStatus();
+                
+                // Ensure all channels with viewing enabled are connected for live messages
+                var enabledChannels = _multiChannelManager.GetFollowedChannels().Where(c => c.ViewingEnabled).ToList();
+                foreach (var channel in enabledChannels.Where(c => !c.IsConnected))
+                {
+                    _logger.LogInformation("Reconnecting viewing-enabled channel on startup: {Channel} ({Platform})", channel.Name, channel.Platform);
+                    try
+                    {
+                        await _multiChannelManager.RetryConnectionAsync(channel.Name);
+                        // Load recent messages for this channel
+                        await LoadRecentMessagesForChannelAsync(channel.Name, channel.Platform);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to reconnect viewing-enabled channel on startup: {Channel}", channel.Name);
+                    }
+                }
+                
+                // Add initial welcome message if no channels are enabled for viewing
+                if (enabledChannels.Count == 0)
+                {
+                    var welcomeMessage = new ChatMessage
+                    {
+                        Username = "System",
+                        Message = "Welcome to Multi-Platform Chat Viewer! 📺\n\n" +
+                                "To get started:\n" +
+                                "1. Go to 'Channels' menu → 'Followed Channels'\n" +
+                                "2. Add channels from Twitch or Kick\n" +
+                                "3. Enable multiple channels to view all their chat messages here simultaneously\n\n" +
+                                "You can enable/disable any combination of channels for multi-chat viewing!",
+                        Timestamp = DateTime.Now,
+                        IsSystemMessage = true
+                    };
+                    MessageParser.ParseChatMessage(welcomeMessage);
+                    ChatMessages.Insert(0, welcomeMessage);
+                }
             }
             catch (Exception ex)
             {
@@ -768,6 +809,147 @@ namespace TwitchChatViewer
             }
         }
 
+        private async Task LoadRecentMessagesForChannelAsync(string channelName, Platform platform)
+        {
+            try
+            {
+                // Create a temporary database service for this specific channel
+                var databaseLogger = _serviceProvider.GetRequiredService<ILogger<ChatDatabaseService>>();
+                var tempDatabaseService = new ChatDatabaseService(databaseLogger);
+                await tempDatabaseService.InitializeDatabaseAsync(channelName, platform);
+                
+                // Load more messages initially, but respect our limit
+                var messagesToLoad = Math.Min(50, 100); // Load fewer per channel to avoid overwhelming the UI
+                var recentMessages = await tempDatabaseService.GetRecentMessagesAsync(messagesToLoad);
+                
+                // Mark messages with their source channel for display
+                foreach (var message in recentMessages)
+                {
+                    message.SourceChannel = channelName;
+                    message.SourcePlatform = platform;
+                    
+                    // Add to the chat messages collection, sorted by timestamp
+                    InsertMessageInOrder(message);
+                }
+                
+                await tempDatabaseService.CloseConnectionAsync();
+                
+                _logger.LogInformation("Loaded {Count} recent messages for channel: {Channel} ({Platform})", 
+                    recentMessages.Count, channelName, platform);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading recent messages for channel: {Channel} ({Platform})", channelName, platform);
+            }
+        }
+
+        private void InsertMessageInOrder(ChatMessage message)
+        {
+            // Find the correct position to insert the message to maintain chronological order
+            var insertIndex = 0;
+            for (int i = 0; i < ChatMessages.Count; i++)
+            {
+                if (ChatMessages[i].Timestamp <= message.Timestamp)
+                {
+                    insertIndex = i;
+                    break;
+                }
+                insertIndex = i + 1;
+            }
+            
+            ChatMessages.Insert(insertIndex, message);
+            
+            // Maintain the message limit
+            while (ChatMessages.Count > MAX_MESSAGES_IN_CHAT)
+            {
+                ChatMessages.RemoveAt(ChatMessages.Count - 1);
+            }
+        }
+
+        private void RemoveChannelMessagesFromDisplay(string channelName, Platform platform)
+        {
+            try
+            {
+                // Remove all messages from the specified channel
+                for (int i = ChatMessages.Count - 1; i >= 0; i--)
+                {
+                    var message = ChatMessages[i];
+                    if (string.Equals(message.SourceChannel, channelName, StringComparison.OrdinalIgnoreCase) 
+                        && message.SourcePlatform == platform)
+                    {
+                        ChatMessages.RemoveAt(i);
+                    }
+                }
+                
+                _logger.LogInformation("Removed messages for channel: {Channel} ({Platform})", channelName, platform);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error removing messages for channel: {Channel} ({Platform})", channelName, platform);
+            }
+        }
+
+        private void UpdateMultiChannelStats()
+        {
+            try
+            {
+                var enabledChannels = _multiChannelManager.GetFollowedChannels().Where(c => c.ViewingEnabled).ToList();
+                
+                if (enabledChannels.Count == 0)
+                {
+                    CurrentChannelMessageCount = 0;
+                    CurrentChannelDatabaseSize = "0 B";
+                }
+                else if (enabledChannels.Count == 1)
+                {
+                    var channel = enabledChannels.First();
+                    CurrentChannelMessageCount = channel.MessageCount;
+                    CurrentChannelDatabaseSize = channel.DatabaseSizeFormatted;
+                }
+                else
+                {
+                    // Aggregate stats from multiple channels
+                    var totalMessages = enabledChannels.Sum(c => c.MessageCount);
+                    var totalSize = enabledChannels.Sum(c => c.DatabaseSize);
+                    
+                    CurrentChannelMessageCount = totalMessages;
+                    CurrentChannelDatabaseSize = FormatFileSize(totalSize);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating multi-channel stats");
+            }
+        }
+
+        private void UpdateMultiChannelStatus()
+        {
+            try
+            {
+                var enabledChannels = _multiChannelManager.GetFollowedChannels().Where(c => c.ViewingEnabled).ToList();
+                
+                if (enabledChannels.Count == 0)
+                {
+                    StatusMessage = "No channels enabled for viewing - Use 'Channels' menu to enable channels";
+                }
+                else if (enabledChannels.Count == 1)
+                {
+                    var channel = enabledChannels.First();
+                    StatusMessage = $"Multi-Chat: {channel.Name} ({channel.PlatformName})";
+                }
+                else
+                {
+                    var channelNames = string.Join(", ", enabledChannels.Select(c => $"{c.Name}({c.PlatformName})"));
+                    StatusMessage = $"Multi-Chat: {enabledChannels.Count} channels - {channelNames}";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating multi-channel status");
+                StatusMessage = "Error updating status";
+            }
+        }
+
         private static string FormatFileSize(long bytes)
         {
             if (bytes == 0) return "0 B";
@@ -787,14 +969,27 @@ namespace TwitchChatViewer
 
         private void UpdateWindowTitle()
         {
-            if (string.IsNullOrEmpty(CurrentChannel))
+            // Safety check - ensure _multiChannelManager is initialized
+            if (_multiChannelManager == null)
+            {
+                Title = "Multi-Platform Chat Viewer";
+                return;
+            }
+            
+            var enabledChannels = _multiChannelManager.GetFollowedChannels().Where(c => c.ViewingEnabled).ToList();
+            
+            if (enabledChannels.Count == 0)
             {
                 Title = "Multi-Platform Chat Viewer";
             }
+            else if (enabledChannels.Count == 1)
+            {
+                var channel = enabledChannels.First();
+                Title = $"Multi-Platform Chat Viewer - {channel.PlatformName} #{channel.Name}";
+            }
             else
             {
-                var platformName = CurrentChannelPlatform.ToString();
-                Title = $"Multi-Platform Chat Viewer - {platformName} #{CurrentChannel}";
+                Title = $"Multi-Platform Chat Viewer - {enabledChannels.Count} Channels";
             }
         }        protected override void OnClosing(CancelEventArgs e)
         {
@@ -904,9 +1099,12 @@ namespace TwitchChatViewer
                 return;
             }
 
-            // Only display messages from background clients if they're for the currently viewed channel
-            if (!string.IsNullOrEmpty(CurrentChannel) && 
-                args.Channel.Equals(CurrentChannel, StringComparison.OrdinalIgnoreCase))
+            // Check if this message is from any channel that's enabled for viewing
+            var enabledChannels = _multiChannelManager.GetFollowedChannels().Where(c => c.ViewingEnabled).ToList();
+            var isFromEnabledChannel = enabledChannels.Any(c => 
+                args.Channel.Equals(c.Name, StringComparison.OrdinalIgnoreCase));
+            
+            if (isFromEnabledChannel)
             {                Dispatcher.Invoke(() =>
                 {
                     // Check if window is minimized - if so, pause message rendering
@@ -953,7 +1151,7 @@ namespace TwitchChatViewer
                     CurrentChannelMessageCount++;                    
                     
                     _logger.LogDebug("Background message displayed in main window for channel {Channel}: {Username} - {Message}", 
-                        CurrentChannel, args.Message.Username, args.Message.Message);
+                        args.Channel, args.Message.Username, args.Message.Message);
                 });
             }
         }[SupportedOSPlatform("windows6.1")]        private void InitializeSystemTray()
