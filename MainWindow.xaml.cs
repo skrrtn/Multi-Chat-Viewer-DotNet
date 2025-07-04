@@ -803,11 +803,8 @@ namespace TwitchChatViewer
         {
             try
             {
-                var followedChannels = _multiChannelManager.GetFollowedChannels();
-                var totalChannels = followedChannels.Count;
-                var onlineChannels = followedChannels.Count(c => c.IsConnected);
-                
-                StatusMessage = $"Followed Channels: {totalChannels} | Online: {onlineChannels}";
+                // Use the same format as multi-channel status for consistency
+                UpdateMultiChannelStatus();
             }
             catch (Exception ex)
             {
@@ -969,17 +966,17 @@ namespace TwitchChatViewer
                 
                 if (enabledChannels.Count == 0)
                 {
-                    StatusMessage = "No channels enabled for viewing - Use 'Channels' menu to enable channels";
+                    StatusMessage = "No Channels Enabled";
                 }
                 else if (enabledChannels.Count == 1)
                 {
                     var channel = enabledChannels.First();
-                    StatusMessage = $"Multi-Chat: {channel.Name} ({channel.PlatformName})";
+                    StatusMessage = $"{channel.Name}({channel.PlatformName.ToLower()})";
                 }
                 else
                 {
-                    var channelNames = string.Join(", ", enabledChannels.Select(c => $"{c.Name}({c.PlatformName})"));
-                    StatusMessage = $"Multi-Chat: {enabledChannels.Count} channels - {channelNames}";
+                    var channelNames = string.Join(", ", enabledChannels.Select(c => $"{c.Name}({c.PlatformName.ToLower()})"));
+                    StatusMessage = channelNames;
                 }
             }
             catch (Exception ex)

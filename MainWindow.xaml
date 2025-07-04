@@ -402,29 +402,96 @@
                     </Style>
                 </Button.Style>
             </Button>
-        </Grid><!-- Status Bar -->
+        </Grid>        <!-- Status Bar -->
         <Border Grid.Row="2" Background="#2d2d30" Padding="10" BorderBrush="#3c3c3c" BorderThickness="0,1,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <Grid x:Name="StatusBarGrid">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="LayoutTransform">
+                            <Setter.Value>
+                                <ScaleTransform/>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <!-- Switch to vertical layout when window is narrow -->
+                            <DataTrigger Binding="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Window}, Converter={x:Static local:WidthToLayoutConverter.Instance}}" Value="True">
+                                <Setter Property="LayoutTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform/>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
                 
-                <!-- Left: Status Message -->
-                <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                <!-- Horizontal Layout (default) -->
+                <Grid x:Name="HorizontalLayout">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Window}, Converter={x:Static local:WidthToLayoutConverter.Instance}}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Left: Status Message -->
+                    <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" VerticalAlignment="Center" Margin="0,0,20,0" TextTrimming="CharacterEllipsis"/>
+                    
+                    <!-- Center: Message Count -->
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <Run Text="Messages: "/>
+                        <Run Text="{Binding CurrentChannelMessageCount, StringFormat='{}{0:N0}'}" FontWeight="Bold"/>
+                    </TextBlock>
+                    
+                    <!-- Right: Database Size -->
+                    <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="20,0,0,0">
+                        <Run Text="DB Size: "/>
+                        <Run Text="{Binding CurrentChannelDatabaseSize}" FontWeight="Bold"/>
+                    </TextBlock>
+                </Grid>
                 
-                <!-- Center: Message Count -->
-                <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <Run Text="Messages: "/>
-                    <Run Text="{Binding CurrentChannelMessageCount, StringFormat='{}{0:N0}'}" FontWeight="Bold"/>
-                </TextBlock>
-                
-                <!-- Right: Database Size -->
-                <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="20,0,0,0">
-                    <Run Text="DB Size: "/>
-                    <Run Text="{Binding CurrentChannelDatabaseSize}" FontWeight="Bold"/>
-                </TextBlock>
+                <!-- Vertical Layout (narrow window) -->
+                <StackPanel x:Name="VerticalLayout" Orientation="Vertical" HorizontalAlignment="Center">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Window}, Converter={x:Static local:WidthToLayoutConverter.Instance}}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    
+                    <!-- First Row: Status Message (channels only) -->
+                    <TextBlock Text="{Binding StatusMessage}" 
+                               VerticalAlignment="Center" 
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,2" 
+                               TextTrimming="CharacterEllipsis" 
+                               MaxWidth="300"/>
+                    
+                    <!-- Second Row: Message Count and Database Size -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                        <TextBlock VerticalAlignment="Center" Margin="0,0,20,0">
+                            <Run Text="Messages: "/>
+                            <Run Text="{Binding CurrentChannelMessageCount, StringFormat='{}{0:N0}'}" FontWeight="Bold"/>
+                        </TextBlock>
+                        <TextBlock VerticalAlignment="Center">
+                            <Run Text="DB Size: "/>
+                            <Run Text="{Binding CurrentChannelDatabaseSize}" FontWeight="Bold"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
             </Grid>
         </Border>
         
