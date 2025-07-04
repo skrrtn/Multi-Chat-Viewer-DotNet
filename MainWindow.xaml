@@ -439,7 +439,7 @@
                              StrokeDashArray="15,5"
                              StrokeDashOffset="0">
                         <Ellipse.RenderTransform>
-                            <RotateTransform x:Name="LoadingRotation"/>
+                            <RotateTransform x:Name="LoadingRotation" CenterX="30" CenterY="30"/>
                         </Ellipse.RenderTransform>
                         <Ellipse.Triggers>
                             <EventTrigger RoutedEvent="FrameworkElement.Loaded">
