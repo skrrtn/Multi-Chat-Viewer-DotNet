@@ -82,11 +82,41 @@ namespace TwitchChatViewer
             try
             {
                 var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
-                var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
-
-                if (!File.Exists(dbPath))
+                
+                // First try to find the database file with the new naming convention (channelname_platform.db)
+                string dbPath = null;
+                Platform detectedPlatform = Platform.Twitch; // Default fallback
+                
+                var dbFiles = Directory.GetFiles(dbDirectory, $"{channelName.ToLower()}_*.db");
+                if (dbFiles.Length > 0)
                 {
-                    _logger.LogWarning("Database file not found for channel: {Channel} at {Path}", channelName, dbPath);
+                    // Use the first matching file with platform naming convention
+                    dbPath = dbFiles[0];
+                    var fileName = Path.GetFileNameWithoutExtension(dbPath);
+                    var parts = fileName.Split('_');
+                    if (parts.Length >= 2)
+                    {
+                        var platformString = parts[parts.Length - 1];
+                        if (Enum.TryParse<Platform>(platformString, true, out var platform))
+                        {
+                            detectedPlatform = platform;
+                        }
+                    }
+                }
+                else
+                {
+                    // Fall back to legacy naming convention
+                    dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                    if (File.Exists(dbPath))
+                    {
+                        // Try to get platform from database metadata
+                        detectedPlatform = await GetPlatformFromDatabaseAsync(dbPath);
+                    }
+                }
+
+                if (dbPath == null || !File.Exists(dbPath))
+                {
+                    _logger.LogWarning("Database file not found for channel: {Channel}", channelName);
                     return messages;
                 }                // Use a separate connection for reading to avoid conflicts with the main database service
                 // Enable WAL mode support and set timeout for concurrent operations
@@ -115,7 +145,8 @@ namespace TwitchChatViewer
                         Message = reader.GetString(1),
                         Timestamp = reader.GetDateTime(2),
                         IsSystemMessage = reader.GetBoolean(3),
-                        ChannelName = channelName
+                        ChannelName = channelName,
+                        SourcePlatform = detectedPlatform  // Set the detected platform
                     };
                     
                     // Parse the message for @mentions
@@ -243,9 +274,39 @@ namespace TwitchChatViewer
             try
             {
                 var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
-                var dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                
+                // First try to find the database file with the new naming convention (channelname_platform.db)
+                string dbPath = null;
+                Platform detectedPlatform = Platform.Twitch; // Default fallback
+                
+                var dbFiles = Directory.GetFiles(dbDirectory, $"{channelName.ToLower()}_*.db");
+                if (dbFiles.Length > 0)
+                {
+                    // Use the first matching file with platform naming convention
+                    dbPath = dbFiles[0];
+                    var fileName = Path.GetFileNameWithoutExtension(dbPath);
+                    var parts = fileName.Split('_');
+                    if (parts.Length >= 2)
+                    {
+                        var platformString = parts[parts.Length - 1];
+                        if (Enum.TryParse<Platform>(platformString, true, out var platform))
+                        {
+                            detectedPlatform = platform;
+                        }
+                    }
+                }
+                else
+                {
+                    // Fall back to legacy naming convention
+                    dbPath = Path.Combine(dbDirectory, $"{channelName.ToLower()}.db");
+                    if (File.Exists(dbPath))
+                    {
+                        // Try to get platform from database metadata
+                        detectedPlatform = await GetPlatformFromDatabaseAsync(dbPath);
+                    }
+                }
 
-                if (!File.Exists(dbPath))
+                if (dbPath == null || !File.Exists(dbPath))
                 {
                     return messages;
                 }                var connectionString = $"Data Source={dbPath};Mode=ReadOnly;Cache=Shared";
@@ -275,7 +336,8 @@ namespace TwitchChatViewer
                         Message = reader.GetString(1),
                         Timestamp = reader.GetDateTime(2),
                         IsSystemMessage = reader.GetBoolean(3),
-                        ChannelName = channelName
+                        ChannelName = channelName,
+                        SourcePlatform = detectedPlatform  // Set the detected platform
                     };
                     
                     // Parse the message for @mentions
@@ -291,6 +353,55 @@ namespace TwitchChatViewer
             }
 
             return messages;
+        }
+
+        /// <summary>
+        /// Gets platform information from a database file by reading metadata
+        /// </summary>
+        private async Task<Platform> GetPlatformFromDatabaseAsync(string dbPath)
+        {
+            try
+            {
+                using var connection = new SqliteConnection($"Data Source={dbPath};Mode=ReadOnly");
+                await connection.OpenAsync();
+
+                // Check if metadata table exists
+                var checkTableSql = @"
+                    SELECT COUNT(*)
+                    FROM sqlite_master 
+                    WHERE type='table' AND name='channel_metadata'";
+
+                using var checkCommand = new SqliteCommand(checkTableSql, connection);
+                var tableExists = Convert.ToInt32(await checkCommand.ExecuteScalarAsync()) > 0;
+
+                if (!tableExists)
+                {
+                    _logger.LogDebug("Metadata table not found in database, defaulting to Twitch");
+                    return Platform.Twitch;
+                }
+
+                // Get platform metadata
+                var selectSql = @"
+                    SELECT value FROM channel_metadata WHERE key = 'platform' LIMIT 1";
+
+                using var command = new SqliteCommand(selectSql, connection);
+                var result = await command.ExecuteScalarAsync();
+
+                if (result != null && Enum.TryParse<Platform>(result.ToString(), out var platform))
+                {
+                    return platform;
+                }
+                else
+                {
+                    _logger.LogDebug("No platform metadata found in database, defaulting to Twitch");
+                    return Platform.Twitch;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading platform from database, defaulting to Twitch");
+                return Platform.Twitch;
+            }
         }
     }
 }
