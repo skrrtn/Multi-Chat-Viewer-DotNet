@@ -1645,5 +1645,25 @@ namespace TwitchChatViewer
             // This event is mainly for logging purposes
             _logger.LogDebug("Show timestamps toggled via menu: {ShowTimestamps}", ShowTimestamps);
         }
+
+        private void StreamerMentionsMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Create and show the Streamer Mentions window
+                // The window automatically monitors all active channels
+                var streamerMentionsWindow = new StreamerMentionsWindow(_serviceProvider, null);
+                
+                streamerMentionsWindow.Show();
+                
+                _logger.LogInformation("Opened Streamer Mentions window - monitoring all active channels");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error opening Streamer Mentions window");
+                System.Windows.MessageBox.Show("Error opening Streamer Mentions window. Please try again.", "Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }
