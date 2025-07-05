@@ -167,7 +167,8 @@
                     SourcePlatform="{Binding SourcePlatform}"
                     ShowTimestamp="{Binding DataContext.ShowTimestamps, RelativeSource={RelativeSource AncestorType=Window}}"
                     VerticalAlignment="Top"
-                    MentionClick="HighlightedTextBlock_MentionClick"/>
+                    MentionClick="HighlightedTextBlock_MentionClick"
+                    UsernameClick="HighlightedTextBlock_UsernameClick"/>
             </Border>
         </DataTemplate>
 

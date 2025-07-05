@@ -230,6 +230,41 @@ namespace TwitchChatViewer
             }
         }
 
+        // Username click event handler for opening user messages window for message author
+        private void HighlightedTextBlock_UsernameClick(object sender, RoutedEventArgs e)
+        {
+            if (e is UsernameClickEventArgs usernameArgs && !string.IsNullOrEmpty(usernameArgs.Username))
+            {
+                try
+                {
+                    _logger.LogInformation("Opening user messages window for message author: {Username}", usernameArgs.Username);
+                    
+                    // Create another UserMessagesWindow for the username that was clicked
+                    var userMessagesWindow = new UserMessagesWindow(
+                        _userMessageService,
+                        _logger,
+                        usernameArgs.Username,
+                        null // No specific channel filter for clicked user
+                    )
+                    {
+                        Owner = this.Owner // Set the same owner as this window
+                    };
+                    
+                    userMessagesWindow.Show();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error opening user messages window for user: {Username}", usernameArgs.Username);
+                    System.Windows.MessageBox.Show(
+                        $"Error opening user messages window for {usernameArgs.Username}.\n\nError: {ex.Message}",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error
+                    );
+                }
+            }
+        }
+
         protected virtual void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

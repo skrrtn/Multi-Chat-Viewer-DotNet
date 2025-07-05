@@ -262,7 +262,8 @@
                         IsSystemMessage="{Binding IsSystemMessage}"
                         SourcePlatform="{Binding SourcePlatform}"
                         VerticalAlignment="Top"
-                        MentionClick="HighlightedTextBlock_MentionClick"/>
+                        MentionClick="HighlightedTextBlock_MentionClick"
+                        UsernameClick="HighlightedTextBlock_UsernameClick"/>
                 </StackPanel>
             </Border>
         </DataTemplate>
