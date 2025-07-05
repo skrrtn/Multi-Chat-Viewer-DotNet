@@ -208,14 +208,8 @@
     </Window.Resources>
     
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-
         <!-- Mentions Display -->
-        <Grid Grid.Row="0">
-            <ListBox x:Name="MentionsListBox"
+        <ListBox x:Name="MentionsListBox"
                      ItemsSource="{Binding MentionMessages}" 
                      ItemTemplate="{StaticResource ChatMessageTemplate}"
                      Background="#1e1e1e"
@@ -286,27 +280,5 @@
                     Margin="0,10,0,0"
                     Click="ScrollToTopButton_Click"
                     Visibility="{Binding ScrollToTopButtonVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-        </Grid>
-
-        <!-- Status Bar -->
-        <Border Grid.Row="1" Background="#2d2d30" Padding="10" BorderBrush="#3c3c3c" BorderThickness="0,1,0,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                
-                <TextBlock Grid.Column="0" 
-                           Text="{Binding StatusMessage}" 
-                           Foreground="White" 
-                           VerticalAlignment="Center"/>
-                
-                <TextBlock Grid.Column="1" 
-                           Text="{Binding MentionCount, StringFormat='Mentions: {0}'}" 
-                           Foreground="White" 
-                           VerticalAlignment="Center" 
-                           FontWeight="SemiBold"/>
-            </Grid>
-        </Border>
     </Grid>
 </Window>
