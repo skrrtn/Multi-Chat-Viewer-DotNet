@@ -92,6 +92,43 @@ The release executable is completely self-contained and includes all necessary d
 - Windows 10/11 (64-bit)
 - ~165 MB of disk space
 
+### Windows Security Warning
+
+When you first run the downloaded executable, Windows may display a warning message saying the file is from an "unknown publisher" or showing "Windows protected your PC". This is completely normal and expected behavior for executables that haven't been digitally signed with an expensive code signing certificate.
+
+**Why does this happen?**
+- Code signing certificates cost hundreds of dollars annually
+- As an open-source project, we distribute unsigned executables to keep the software free
+- Windows shows this warning for any executable without a valid digital signature
+- This doesn't mean the software is unsafe - it just means Microsoft doesn't recognize the publisher
+
+**How to run the program safely:**
+
+1. **When you see "Windows protected your PC" dialog:**
+   - Click **"More info"** link at the bottom left
+   - Click **"Run anyway"** button that appears
+   - The program will start normally
+
+2. **Alternative method - Right-click approach:**
+   - Right-click on `MultiChatViewer.exe`
+   - Select **"Properties"**
+   - Check the **"Unblock"** checkbox at the bottom (if present)
+   - Click **"OK"**
+   - Double-click the executable to run
+
+3. **Adding to Windows Defender exceptions (optional):**
+   - Open Windows Security → Virus & threat protection
+   - Add the executable folder to your exclusions list
+   - This prevents future scanning delays but isn't required
+
+**Is this safe?**
+- The source code is completely open and available for inspection on GitHub
+- You can build the executable yourself from source if you prefer
+- The warning is purely about the lack of a digital signature, not about malicious content
+- Many legitimate open-source applications show this same warning
+
+If you're still concerned, you can always build the application from source code using the instructions below.
+
 ### Option 2: Build from Source
 
 If you want to build from source code or contribute to development:
