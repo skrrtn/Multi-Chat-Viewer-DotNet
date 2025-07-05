@@ -33,6 +33,10 @@ namespace TwitchChatViewer
         private double _chatFontSize = 12.0; // Default font size matches BaseFontSize
         private bool _showTimestamps = true; // Default to showing timestamps
         private readonly System.Windows.Threading.DispatcherTimer _statusUpdateTimer = new();
+        
+        // Streamer Mentions window singleton
+        private StreamerMentionsWindow _streamerMentionsWindow;
+        private bool _isStreamerMentionsWindowOpen = false;
           // Performance and scroll management
         private const int MAX_MESSAGES_IN_CHAT = 1200;
         private bool _isAutoScrollEnabled = true;
@@ -149,6 +153,16 @@ namespace TwitchChatViewer
         // Loading state properties
         private bool _isLoading = true;
         private string _loadingMessage = "Loading databases...";
+
+        public bool IsStreamerMentionsWindowOpen
+        {
+            get => _isStreamerMentionsWindowOpen;
+            set
+            {
+                _isStreamerMentionsWindowOpen = value;
+                OnPropertyChanged(nameof(IsStreamerMentionsWindowOpen));
+            }
+        }
 
         public bool IsLoading
         {
@@ -1095,6 +1109,15 @@ namespace TwitchChatViewer
                 _statusUpdateTimer?.Stop();
                 _resizeTimer?.Stop();
                 
+                // Close streamer mentions window if open
+                if (_streamerMentionsWindow != null && _isStreamerMentionsWindowOpen)
+                {
+                    _streamerMentionsWindow.Closed -= StreamerMentionsWindow_Closed;
+                    _streamerMentionsWindow.Close();
+                    _streamerMentionsWindow = null;
+                    IsStreamerMentionsWindowOpen = false;
+                }
+                
                 // Unsubscribe from events
                 _multiChannelManager.ChannelConnected -= OnChannelConnected;
                 _multiChannelManager.ChannelDisconnected -= OnChannelDisconnected;
@@ -1657,20 +1680,62 @@ namespace TwitchChatViewer
         {
             try
             {
-                // Create and show the Streamer Mentions window
-                // The window automatically monitors all active channels
-                var streamerMentionsWindow = new StreamerMentionsWindow(_serviceProvider, null);
-                
-                streamerMentionsWindow.Show();
-                
-                _logger.LogInformation("Opened Streamer Mentions window - monitoring all active channels");
+                if (sender is MenuItem menuItem)
+                {
+                    // Get the desired state from the menu item's IsChecked property
+                    bool shouldBeOpen = menuItem.IsChecked;
+                    
+                    if (shouldBeOpen && (_streamerMentionsWindow == null || !_isStreamerMentionsWindowOpen))
+                    {
+                        // Create and show the Streamer Mentions window
+                        _streamerMentionsWindow = new StreamerMentionsWindow(_serviceProvider, null);
+                        
+                        // Subscribe to the Closed event to update our state
+                        _streamerMentionsWindow.Closed += StreamerMentionsWindow_Closed;
+                        
+                        _streamerMentionsWindow.Show();
+                        IsStreamerMentionsWindowOpen = true;
+                        
+                        _logger.LogInformation("Opened Streamer Mentions window - monitoring all active channels");
+                    }
+                    else if (!shouldBeOpen && _streamerMentionsWindow != null && _isStreamerMentionsWindowOpen)
+                    {
+                        // Close the window
+                        _streamerMentionsWindow.Close();
+                        // The Closed event handler will update our state
+                    }
+                    else if (shouldBeOpen && _streamerMentionsWindow != null && _isStreamerMentionsWindowOpen)
+                    {
+                        // Window exists and is open, bring it to front
+                        _streamerMentionsWindow.Activate();
+                        _streamerMentionsWindow.Focus();
+                    }
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error opening Streamer Mentions window");
-                System.Windows.MessageBox.Show("Error opening Streamer Mentions window. Please try again.", "Error", 
+                _logger.LogError(ex, "Error managing Streamer Mentions window");
+                System.Windows.MessageBox.Show("Error managing Streamer Mentions window. Please try again.", "Error", 
                     MessageBoxButton.OK, MessageBoxImage.Error);
+                
+                // Reset the checkbox state on error
+                IsStreamerMentionsWindowOpen = false;
             }
+        }
+
+        private void StreamerMentionsWindow_Closed(object sender, EventArgs e)
+        {
+            // Update our state when the window is closed
+            IsStreamerMentionsWindowOpen = false;
+            
+            // Unsubscribe from the event and clear the reference
+            if (_streamerMentionsWindow != null)
+            {
+                _streamerMentionsWindow.Closed -= StreamerMentionsWindow_Closed;
+                _streamerMentionsWindow = null;
+            }
+            
+            _logger.LogInformation("Streamer Mentions window closed");
         }
     }
 }

@@ -310,7 +310,7 @@
                     <MenuItem Header="+200%" Click="FontScale200_Click"/>                </MenuItem>
                 <Separator/>
                 <MenuItem Header="Show _Timestamps" IsCheckable="True" IsChecked="{Binding ShowTimestamps}" Click="ShowTimestampsMenuItem_Click"/>                <Separator/>
-                <MenuItem Header="_Streamer Mentions" Click="StreamerMentionsMenuItem_Click"/>
+                <MenuItem Header="_Streamer Mentions" IsCheckable="True" IsChecked="{Binding IsStreamerMentionsWindowOpen}" Click="StreamerMentionsMenuItem_Click"/>
                 <Separator/>
                 <MenuItem Header="_Clear Chat" Click="ClearButton_Click"/>
             </MenuItem></Menu><!-- Chat Display -->
