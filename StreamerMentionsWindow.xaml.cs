@@ -175,22 +175,24 @@ namespace TwitchChatViewer
 
         private void OnMessageReceived(object sender, (string Channel, ChatMessage Message) args)
         {
-            // Get all active channels from the MultiChannelManager
-            var activeChannels = _multiChannelManager.GetFollowedChannels();
+            // Get only channels that are enabled for multi-view (ViewingEnabled = true)
+            var activeChannels = _multiChannelManager.GetFollowedChannels()
+                .Where(c => c.ViewingEnabled)
+                .ToList();
             
             if (!activeChannels.Any())
             {
-                // Update status if no channels are active
-                if (StatusMessage == "No channel selected")
+                // Update status if no channels are enabled for viewing
+                if (StatusMessage.Contains("No channels"))
                 {
                     // Already showing correct message
                     return;
                 }
-                Dispatcher.Invoke(() => StatusMessage = "No channels active");
+                Dispatcher.Invoke(() => StatusMessage = "No channels enabled for multi-view");
                 return;
             }
 
-            // Check if this message mentions any of the active channel names
+            // Check if this message mentions any of the viewing-enabled channel names
             var mentionedChannel = GetMentionedChannel(args.Message, activeChannels);
             if (!string.IsNullOrEmpty(mentionedChannel))
             {
@@ -294,17 +296,20 @@ namespace TwitchChatViewer
 
         private void UpdateStatusForActiveChannels()
         {
-            var activeChannels = _multiChannelManager.GetFollowedChannels();
+            // Get only channels that are enabled for multi-view (ViewingEnabled = true)
+            var activeChannels = _multiChannelManager.GetFollowedChannels()
+                .Where(c => c.ViewingEnabled)
+                .ToList();
             
             if (!activeChannels.Any())
             {
-                StatusMessage = "No channels active";
+                StatusMessage = "No channels enabled for multi-view";
             }
             else
             {
                 var channelCount = activeChannels.Count;
                 var channelNames = string.Join(", ", activeChannels.Select(c => c.Name));
-                StatusMessage = $"Monitoring @mentions for {channelCount} channel{(channelCount != 1 ? "s" : "")}: {channelNames}";
+                StatusMessage = $"Monitoring @mentions for {channelCount} multi-view channel{(channelCount != 1 ? "s" : "")}: {channelNames}";
             }
         }
 
@@ -319,11 +324,14 @@ namespace TwitchChatViewer
 
         private void UpdateWindowTitle()
         {
-            var activeChannels = _multiChannelManager.GetFollowedChannels();
+            // Get only channels that are enabled for multi-view (ViewingEnabled = true)
+            var activeChannels = _multiChannelManager.GetFollowedChannels()
+                .Where(c => c.ViewingEnabled)
+                .ToList();
             
             if (!activeChannels.Any())
             {
-                Title = "Streamer Mentions - No Active Channels";
+                Title = "Streamer Mentions - No Multi-View Channels";
             }
             else if (activeChannels.Count == 1)
             {
@@ -331,7 +339,7 @@ namespace TwitchChatViewer
             }
             else
             {
-                Title = $"Streamer Mentions - {activeChannels.Count} Channels";
+                Title = $"Streamer Mentions - {activeChannels.Count} Multi-View Channels";
             }
         }
 

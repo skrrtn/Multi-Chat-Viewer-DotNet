@@ -264,7 +264,7 @@
 
             <!-- No Mentions Message -->
             <TextBlock x:Name="NoMentionsTextBlock"
-                       Text="No @mentions found yet. @mentions will appear here when any active channel name is mentioned with @ in chat."
+                       Text="No @mentions found yet. @mentions will appear here when any multi-view enabled channel name is mentioned with @ in chat."
                        Foreground="#888888"
                        FontSize="14"
                        HorizontalAlignment="Center"
