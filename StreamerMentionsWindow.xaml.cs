@@ -152,6 +152,7 @@ namespace TwitchChatViewer
 
             // Enable Ctrl+Scroll zoom functionality
             this.PreviewKeyDown += StreamerMentionsWindow_PreviewKeyDown;
+            this.PreviewKeyUp += StreamerMentionsWindow_PreviewKeyUp;
             this.PreviewMouseWheel += StreamerMentionsWindow_PreviewMouseWheel;
 
             _logger.LogInformation("StreamerMentionsWindow initialized for channel: {Channel}", channelName);
@@ -442,18 +443,20 @@ namespace TwitchChatViewer
         // Ctrl+Scroll zoom functionality
         private void StreamerMentionsWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            // Store Ctrl key state for mouse wheel events
-            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
-            {
-                _isCtrlPressed = true;
-            }
+            // This event handler is kept for potential future use
+            // Currently, we rely on Keyboard.Modifiers for real-time state checking
         }
 
-        private bool _isCtrlPressed = false;
+        private void StreamerMentionsWindow_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            // This event handler is kept for potential future use
+            // Currently, we rely on Keyboard.Modifiers for real-time state checking
+        }
 
         private void StreamerMentionsWindow_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (_isCtrlPressed || (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            // Only adjust font size when Ctrl key is currently pressed
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
                 // Adjust font size with Ctrl+Mouse Wheel
                 double newSize = ChatFontSize + (e.Delta > 0 ? 1 : -1);
