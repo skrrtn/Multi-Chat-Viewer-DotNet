@@ -40,7 +40,7 @@ namespace TwitchChatViewer
             {
                 _currentChannelName = value;
                 OnPropertyChanged(nameof(CurrentChannelName));
-                UpdateWindowTitle();
+                UpdateStatusForActiveChannels();
             }
         }
 
@@ -123,7 +123,6 @@ namespace TwitchChatViewer
 
             // Set initial status based on active channels
             UpdateStatusForActiveChannels();
-            UpdateWindowTitle();
 
             // Load settings from configuration
             LoadSettings();
@@ -131,10 +130,12 @@ namespace TwitchChatViewer
             // Subscribe to message events
             _multiChannelManager.MessageReceived += OnMessageReceived;
             
-            // Subscribe to channel events to update status when channels are added/removed
+            // Subscribe to channel events to update status when channels are added/removed/toggled
             _multiChannelManager.ChannelConnected += OnChannelConnected;
             _multiChannelManager.ChannelDisconnected += OnChannelDisconnected;
+            _multiChannelManager.ChannelAdded += OnChannelAdded;
             _multiChannelManager.ChannelRemoved += OnChannelRemoved;
+            _multiChannelManager.ChannelViewingToggled += OnChannelViewingToggled;
 
             // Set up scroll event handling
             this.Loaded += (s, e) => {
@@ -301,6 +302,11 @@ namespace TwitchChatViewer
                 .Where(c => c.ViewingEnabled)
                 .ToList();
             
+            // Debug logging
+            _logger.LogDebug("UpdateStatusForActiveChannels: Found {Count} active channels: {Channels}", 
+                activeChannels.Count, 
+                string.Join(", ", activeChannels.Select(c => $"{c.Name}(ViewingEnabled={c.ViewingEnabled})")));
+            
             if (!activeChannels.Any())
             {
                 StatusMessage = "No channels enabled for multi-view";
@@ -311,6 +317,25 @@ namespace TwitchChatViewer
                 var channelNames = string.Join(", ", activeChannels.Select(c => c.Name));
                 StatusMessage = $"Monitoring @mentions for {channelCount} multi-view channel{(channelCount != 1 ? "s" : "")}: {channelNames}";
             }
+            
+            // Update window title with the same data to ensure consistency
+            UpdateWindowTitleWithChannels(activeChannels);
+        }
+
+        private void UpdateWindowTitleWithChannels(System.Collections.Generic.List<FollowedChannel> activeChannels)
+        {
+            if (!activeChannels.Any())
+            {
+                Title = "Streamer Mentions - No Channels";
+            }
+            else if (activeChannels.Count == 1)
+            {
+                Title = $"Streamer Mentions - {activeChannels.First().Name}";
+            }
+            else
+            {
+                Title = $"Streamer Mentions - {activeChannels.Count} Channels";
+            }
         }
 
         private void UpdateNoMentionsVisibility()
@@ -319,27 +344,6 @@ namespace TwitchChatViewer
             if (noMentionsTextBlock != null)
             {
                 noMentionsTextBlock.Visibility = MentionMessages.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            }
-        }
-
-        private void UpdateWindowTitle()
-        {
-            // Get only channels that are enabled for multi-view (ViewingEnabled = true)
-            var activeChannels = _multiChannelManager.GetFollowedChannels()
-                .Where(c => c.ViewingEnabled)
-                .ToList();
-            
-            if (!activeChannels.Any())
-            {
-                Title = "Streamer Mentions - No Multi-View Channels";
-            }
-            else if (activeChannels.Count == 1)
-            {
-                Title = $"Streamer Mentions - {activeChannels.First().Name}";
-            }
-            else
-            {
-                Title = $"Streamer Mentions - {activeChannels.Count} Multi-View Channels";
             }
         }
 
@@ -513,7 +517,9 @@ namespace TwitchChatViewer
                 _multiChannelManager.MessageReceived -= OnMessageReceived;
                 _multiChannelManager.ChannelConnected -= OnChannelConnected;
                 _multiChannelManager.ChannelDisconnected -= OnChannelDisconnected;
+                _multiChannelManager.ChannelAdded -= OnChannelAdded;
                 _multiChannelManager.ChannelRemoved -= OnChannelRemoved;
+                _multiChannelManager.ChannelViewingToggled -= OnChannelViewingToggled;
             }
             
             _logger.LogInformation("StreamerMentionsWindow closed - was monitoring multiple channels");
@@ -525,7 +531,6 @@ namespace TwitchChatViewer
             Dispatcher.Invoke(() =>
             {
                 UpdateStatusForActiveChannels();
-                UpdateWindowTitle();
                 _logger.LogDebug("StreamerMentionsWindow updated for connected channel: {Channel}", channelName);
             });
         }
@@ -535,7 +540,6 @@ namespace TwitchChatViewer
             Dispatcher.Invoke(() =>
             {
                 UpdateStatusForActiveChannels();
-                UpdateWindowTitle();
                 _logger.LogDebug("StreamerMentionsWindow updated for disconnected channel: {Channel}", channelName);
             });
         }
@@ -545,8 +549,25 @@ namespace TwitchChatViewer
             Dispatcher.Invoke(() =>
             {
                 UpdateStatusForActiveChannels();
-                UpdateWindowTitle();
                 _logger.LogDebug("StreamerMentionsWindow updated for removed channel: {Channel}", channelName);
+            });
+        }
+
+        private void OnChannelAdded(object sender, string channelName)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                UpdateStatusForActiveChannels();
+                _logger.LogDebug("StreamerMentionsWindow updated for added channel: {Channel}", channelName);
+            });
+        }
+
+        private void OnChannelViewingToggled(object sender, (string Channel, bool ViewingEnabled) args)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                UpdateStatusForActiveChannels();
+                _logger.LogDebug("StreamerMentionsWindow updated for viewing toggle: {Channel} ViewingEnabled={ViewingEnabled}", args.Channel, args.ViewingEnabled);
             });
         }
     }

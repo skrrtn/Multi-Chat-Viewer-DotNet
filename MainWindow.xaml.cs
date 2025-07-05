@@ -487,6 +487,13 @@ namespace TwitchChatViewer
                 UpdateMultiChannelStatus();
                 UpdateWindowTitle();
                 
+                // Fire the MultiChannelManager event so other windows can be notified
+                if (_multiChannelManager != null)
+                {
+                    // Fire the event to notify other components (like StreamerMentionsWindow)
+                    _multiChannelManager.OnChannelViewingToggled(channelName, followedChannel.ViewingEnabled);
+                }
+                
                 // If this is the first channel enabled, ensure we're "connected"
                 var anyChannelEnabled = _multiChannelManager.GetFollowedChannels().Any(c => c.ViewingEnabled);
                 IsConnected = anyChannelEnabled;

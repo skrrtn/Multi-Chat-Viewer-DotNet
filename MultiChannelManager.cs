@@ -205,8 +205,10 @@ namespace TwitchChatViewer
         public event EventHandler<(string Channel, ChatMessage Message)> MessageReceived;
         public event EventHandler<string> ChannelConnected;
         public event EventHandler<string> ChannelDisconnected;
+        public event EventHandler<string> ChannelAdded;
         public event EventHandler<string> ChannelRemoved;
         public event EventHandler<(string Channel, string Error)> ChannelError;
+        public event EventHandler<(string Channel, bool ViewingEnabled)> ChannelViewingToggled;
 
         // Generate unique key for channel storage using both name and platform
         private static string GenerateChannelKey(string channelName, Platform platform)
@@ -244,6 +246,11 @@ namespace TwitchChatViewer
         public List<FollowedChannel> GetFollowedChannels()
         {
             return [.. _followedChannels.Values];
+        }
+
+        public void OnChannelViewingToggled(string channelName, bool viewingEnabled)
+        {
+            ChannelViewingToggled?.Invoke(this, (channelName, viewingEnabled));
         }public async Task LoadFollowedChannelsAsync()
         {
             try
@@ -544,6 +551,10 @@ namespace TwitchChatViewer
                 await _followedChannelsStorage.AddChannelAsync(normalizedChannel);
 
                 _logger.LogInformation("✅ Successfully added channel: {Channel} on {Platform} (Connected: {IsConnected})", normalizedChannel, platform, followedChannel.IsConnected);
+                
+                // Fire ChannelAdded event
+                ChannelAdded?.Invoke(this, normalizedChannel);
+                
                 return true;
             }
             catch (Exception ex)
@@ -1368,6 +1379,10 @@ namespace TwitchChatViewer
                 await _followedChannelsStorage.AddChannelAsync(normalizedChannel);
 
                 _logger.LogInformation("✅ Successfully added channel: {Channel} on {Platform} (Connected: {IsConnected})", normalizedChannel, platform, followedChannel.IsConnected);
+                
+                // Fire ChannelAdded event
+                ChannelAdded?.Invoke(this, normalizedChannel);
+                
                 return new ChannelAddResult { Success = true };
             }
             catch (Exception ex)
