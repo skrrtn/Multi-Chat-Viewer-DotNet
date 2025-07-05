@@ -30,6 +30,7 @@ A native Windows application built with C# and WPF that connects to Twitch IRC a
 - **Username Click Navigation**: Click on any username to view that user's message history
 - **@Mention Click Support**: Click on @mentions to quickly navigate to mentioned users
 - **@Mention Highlighting**: Visual highlighting of @username mentions in orange with background color
+- **Streamer Mentions Window**: Dedicated window to track mentions of the streamer's name across all active channels
 - **User Lookup System**: Search for users across all channels with message counts and statistics
 - **User Message History**: View complete message history for any user across all monitored channels
 
@@ -180,9 +181,11 @@ The executable will be created in `bin\Release\net8.0-windows\win-x64\publish\`
 ### User Interaction Features
 - **Click Usernames**: Click any username in chat to view that user's complete message history
 - **Click @Mentions**: Click on @mentions (highlighted in orange) to view mentioned user's messages
+- **Streamer Mentions Tracking**: Access the dedicated Streamer Mentions window via View → Streamer Mentions to view all mentions of the streamer's name across all active channels in real-time
 
 ### Advanced Features
 - **Multi-Channel View Management**: Switch between different channels in the main window while monitoring all in the background
+- **Streamer Mentions Window**: Dedicated window that automatically tracks and displays mentions of the streamer's name across all active channels with real-time updates, timestamp toggling, and text resizing capabilities
 - **Menu Font Scaling**: Use View → Font Scaling to choose preset sizes (50%-200%)
 - **Ctrl+Scroll Zooming**: Hold Ctrl and scroll mouse wheel to dynamically adjust font size
 - **Auto-Scroll Management**: Chat auto-scrolls to new messages; scroll up to pause, then use the "Scroll to Top" button to resume
