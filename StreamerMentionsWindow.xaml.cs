@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -21,6 +22,8 @@ namespace TwitchChatViewer
         private bool _scrollToTopButtonVisible = false;
         private bool _isAutoScrollEnabled = true;
         private ScrollViewer _mentionsScrollViewer;
+        private readonly Queue<ChatMessage> _pendingMentions = new();
+        private int _pendingMentionCount = 0;
         
         // Performance management
         private const int MAX_MENTIONS_IN_CHAT = 500;
@@ -74,6 +77,16 @@ namespace TwitchChatViewer
         }
 
         public int MentionCount => MentionMessages.Count;
+
+        public int PendingMentionCount
+        {
+            get => _pendingMentionCount;
+            set
+            {
+                _pendingMentionCount = value;
+                OnPropertyChanged(nameof(PendingMentionCount));
+            }
+        }
 
         private ScrollViewer MentionsScrollViewer 
         { 
@@ -191,6 +204,12 @@ namespace TwitchChatViewer
                         var scrollViewer = MentionsScrollViewer;
                         scrollViewer?.ScrollToTop();
                     }
+                    else
+                    {
+                        // Auto-scroll is disabled, queue the mention instead
+                        _pendingMentions.Enqueue(args.Message);
+                        PendingMentionCount = _pendingMentions.Count;
+                    }
 
                     // Update mention count
                     OnPropertyChanged(nameof(MentionCount));
@@ -281,7 +300,10 @@ namespace TwitchChatViewer
                 // Enable auto-scroll when user scrolls to top
                 if (scrollViewer.VerticalOffset == 0)
                 {
+                    // Process pending mentions and re-enable auto-scroll
+                    ProcessPendingMentions();
                     _isAutoScrollEnabled = true;
+                    ScrollToTopButtonVisible = false;
                 }
             }
         }
@@ -334,6 +356,10 @@ namespace TwitchChatViewer
         private void ClearMentions_Click(object sender, RoutedEventArgs e)
         {
             MentionMessages.Clear();
+            _pendingMentions.Clear();
+            PendingMentionCount = 0;
+            _isAutoScrollEnabled = true;
+            ScrollToTopButtonVisible = false;
             OnPropertyChanged(nameof(MentionCount));
             UpdateNoMentionsVisibility();
         }
@@ -341,9 +367,14 @@ namespace TwitchChatViewer
         private void ScrollToTopButton_Click(object sender, RoutedEventArgs e)
         {
             var scrollViewer = MentionsScrollViewer;
-            scrollViewer?.ScrollToTop();
-            _isAutoScrollEnabled = true;
-            ScrollToTopButtonVisible = false;
+            if (scrollViewer != null)
+            {
+                // Process pending mentions first, then scroll
+                ProcessPendingMentions();
+                scrollViewer.ScrollToTop();
+                _isAutoScrollEnabled = true;
+                ScrollToTopButtonVisible = false;
+            }
         }
 
         // Ctrl+Scroll zoom functionality
@@ -505,6 +536,41 @@ namespace TwitchChatViewer
         {
             _showTimestamps = showTimestamps;
             OnPropertyChanged(nameof(ShowTimestamps));
+        }
+
+        private void ProcessPendingMentions()
+        {
+            if (_pendingMentions.Count == 0) return;
+
+            // Insert all pending mentions at the top in the correct order
+            var mentionsToAdd = new List<ChatMessage>();
+            while (_pendingMentions.Count > 0)
+            {
+                mentionsToAdd.Add(_pendingMentions.Dequeue());
+            }
+
+            // Insert mentions in reverse order so newest appears at top
+            for (int i = mentionsToAdd.Count - 1; i >= 0; i--)
+            {
+                MentionMessages.Insert(0, mentionsToAdd[i]);
+            }
+
+            // Reset pending count
+            PendingMentionCount = 0;
+
+            // Maintain message limit for performance
+            if (MentionMessages.Count > MAX_MENTIONS_IN_CHAT)
+            {
+                var messagesToRemove = MentionMessages.Count - MAX_MENTIONS_IN_CHAT;
+                for (int i = 0; i < messagesToRemove; i++)
+                {
+                    MentionMessages.RemoveAt(MentionMessages.Count - 1);
+                }
+            }
+
+            // Update mention count and visibility
+            OnPropertyChanged(nameof(MentionCount));
+            UpdateNoMentionsVisibility();
         }
     }
 }
