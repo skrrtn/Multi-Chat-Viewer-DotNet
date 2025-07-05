@@ -129,6 +129,12 @@ namespace TwitchChatViewer
                 {
                     _ = Task.Run(async () => await configService.SetShowTimestampsAsync(value));
                 }
+                
+                // Update the StreamerMentionsWindow if it's open
+                if (_streamerMentionsWindow != null && _isStreamerMentionsWindowOpen)
+                {
+                    _streamerMentionsWindow.UpdateTimestampSetting(value);
+                }
             }
         }        public bool ScrollToTopButtonVisible
         {
@@ -1692,6 +1698,9 @@ namespace TwitchChatViewer
                         
                         // Subscribe to the Closed event to update our state
                         _streamerMentionsWindow.Closed += StreamerMentionsWindow_Closed;
+                        
+                        // Sync the timestamp setting with the main window
+                        _streamerMentionsWindow.UpdateTimestampSetting(ShowTimestamps);
                         
                         _streamerMentionsWindow.Show();
                         IsStreamerMentionsWindowOpen = true;

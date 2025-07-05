@@ -17,7 +17,7 @@ namespace TwitchChatViewer
         private readonly MultiChannelManager _multiChannelManager;
         private string _currentChannelName;
         private double _chatFontSize = 12.0; // Default font size
-        private bool _showTimestamps = false; // Default to showing timestamps
+        private bool _showTimestamps = true; // Default to showing timestamps (matches main window)
         private bool _scrollToTopButtonVisible = false;
         private bool _isAutoScrollEnabled = true;
         private ScrollViewer _mentionsScrollViewer;
@@ -58,12 +58,8 @@ namespace TwitchChatViewer
                 _showTimestamps = value;
                 OnPropertyChanged(nameof(ShowTimestamps));
                 
-                // Save the setting to configuration
-                var configService = _serviceProvider.GetService<UnifiedConfigurationService>();
-                if (configService != null)
-                {
-                    _ = Task.Run(async () => await configService.SetShowTimestampsAsync(value));
-                }
+                // Do NOT save to configuration - the main window is the source of truth
+                // The StreamerMentionsWindow should only read from configuration, not write to it
             }
         }
 
@@ -461,6 +457,16 @@ namespace TwitchChatViewer
         private void OnChannelViewingToggled(object sender, (string Channel, bool ViewingEnabled) args)
         {
             // No action needed - status updates removed
+        }
+
+        /// <summary>
+        /// Updates the timestamp setting to match the main window's setting
+        /// This should be called by the MainWindow when the timestamp setting changes
+        /// </summary>
+        public void UpdateTimestampSetting(bool showTimestamps)
+        {
+            _showTimestamps = showTimestamps;
+            OnPropertyChanged(nameof(ShowTimestamps));
         }
     }
 }
