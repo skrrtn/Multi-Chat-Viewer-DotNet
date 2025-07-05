@@ -15,6 +15,9 @@ namespace TwitchChatViewer
         public string ConfigVersion { get; set; } = "1.3";
         public DateTime LastSaved { get; set; } = DateTime.Now;
         
+        // UI Settings
+        public bool ShowTimestamps { get; set; } = true; // Default to showing timestamps
+        
         // Kick credentials (encrypted)
         public string KickClientId { get; set; } = string.Empty;
         public string KickClientSecret { get; set; } = string.Empty;
@@ -611,6 +614,29 @@ namespace TwitchChatViewer
 
             await SaveConfigurationAsync();
             _logger.LogInformation("Updated platform for channel {Channel}: {Platform}", channelName, platform);
+        }
+
+        #endregion
+
+        #region UI Settings
+
+        public bool GetShowTimestamps()
+        {
+            lock (_lock)
+            {
+                return _config.ShowTimestamps;
+            }
+        }
+
+        public async Task SetShowTimestampsAsync(bool showTimestamps)
+        {
+            lock (_lock)
+            {
+                _config.ShowTimestamps = showTimestamps;
+            }
+
+            await SaveConfigurationAsync();
+            _logger.LogInformation("Updated ShowTimestamps setting: {ShowTimestamps}", showTimestamps);
         }
 
         #endregion

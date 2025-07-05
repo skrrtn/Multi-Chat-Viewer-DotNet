@@ -157,6 +157,7 @@
                     Username="{Binding Username}"
                     IsSystemMessage="{Binding IsSystemMessage}"
                     SourcePlatform="{Binding SourcePlatform}"
+                    ShowTimestamp="{Binding DataContext.ShowTimestamps, RelativeSource={RelativeSource AncestorType=Window}}"
                     VerticalAlignment="Top"
                     UsernameClick="HighlightedTextBlock_UsernameClick"
                     MentionClick="HighlightedTextBlock_MentionClick"/>
@@ -306,7 +307,9 @@
                     <MenuItem Header="_Default" Click="FontScaleDefault_Click"/>
                     <MenuItem Header="+125%" Click="FontScale125_Click"/>
                     <MenuItem Header="+150%" Click="FontScale150_Click"/>
-                    <MenuItem Header="+200%" Click="FontScale200_Click"/>                </MenuItem>                <Separator/>
+                    <MenuItem Header="+200%" Click="FontScale200_Click"/>                </MenuItem>
+                <Separator/>
+                <MenuItem Header="Show _Timestamps" IsCheckable="True" IsChecked="{Binding ShowTimestamps}" Click="ShowTimestampsMenuItem_Click"/>                <Separator/>
                 <MenuItem Header="_Clear Chat" Click="ClearButton_Click"/>
             </MenuItem></Menu><!-- Chat Display -->
         <Grid Grid.Row="1">            <ListBox x:Name="ChatListBox"

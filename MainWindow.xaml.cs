@@ -31,6 +31,7 @@ namespace TwitchChatViewer
         private Platform _currentChannelPlatform = Platform.Twitch;
         private int _currentChannelMessageCount;        private string _currentChannelDatabaseSize = "0 B";
         private double _chatFontSize = 12.0; // Default font size matches BaseFontSize
+        private bool _showTimestamps = true; // Default to showing timestamps
         private readonly System.Windows.Threading.DispatcherTimer _statusUpdateTimer = new();
           // Performance and scroll management
         private const int MAX_MESSAGES_IN_CHAT = 1200;
@@ -107,6 +108,23 @@ namespace TwitchChatViewer
             {
                 _chatFontSize = value;
                 OnPropertyChanged(nameof(ChatFontSize));
+            }
+        }
+
+        public bool ShowTimestamps
+        {
+            get => _showTimestamps;
+            set
+            {
+                _showTimestamps = value;
+                OnPropertyChanged(nameof(ShowTimestamps));
+                
+                // Save the setting to configuration
+                var configService = _serviceProvider.GetService<UnifiedConfigurationService>();
+                if (configService != null)
+                {
+                    _ = Task.Run(async () => await configService.SetShowTimestampsAsync(value));
+                }
             }
         }        public bool ScrollToTopButtonVisible
         {
@@ -737,6 +755,15 @@ namespace TwitchChatViewer
                 LoadingMessage = "Loading followed channels...";
                 _logger.LogInformation("Loading followed channels from storage...");
                 await _multiChannelManager.LoadFollowedChannelsAsync();
+                
+                // Load UI settings
+                var configService = _serviceProvider.GetService<UnifiedConfigurationService>();
+                if (configService != null)
+                {
+                    _showTimestamps = configService.GetShowTimestamps();
+                    OnPropertyChanged(nameof(ShowTimestamps));
+                    _logger.LogDebug("Loaded ShowTimestamps setting: {ShowTimestamps}", _showTimestamps);
+                }
                 
                 LoadingMessage = "Connecting channels...";
                 
@@ -1610,6 +1637,13 @@ namespace TwitchChatViewer
                     _logger.LogDebug("Auto-scroll immediately disabled due to scroll bar interaction");
                 }
             }
+        }
+
+        private void ShowTimestampsMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            // The ShowTimestamps property setter will handle saving to configuration
+            // This event is mainly for logging purposes
+            _logger.LogDebug("Show timestamps toggled via menu: {ShowTimestamps}", ShowTimestamps);
         }
     }
 }

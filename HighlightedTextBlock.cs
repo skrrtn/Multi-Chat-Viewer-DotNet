@@ -30,7 +30,11 @@ namespace TwitchChatViewer
 
         public static readonly DependencyProperty SourcePlatformProperty =
             DependencyProperty.Register(nameof(SourcePlatform), typeof(Platform), typeof(HighlightedTextBlock),
-                new PropertyMetadata(Platform.Twitch, OnSourcePlatformChanged));        // Event for username clicks
+                new PropertyMetadata(Platform.Twitch, OnSourcePlatformChanged));
+
+        public static readonly DependencyProperty ShowTimestampProperty =
+            DependencyProperty.Register(nameof(ShowTimestamp), typeof(bool), typeof(HighlightedTextBlock),
+                new PropertyMetadata(true, OnShowTimestampChanged));        // Event for username clicks
         public static readonly RoutedEvent UsernameClickEvent = 
             EventManager.RegisterRoutedEvent(nameof(UsernameClick), RoutingStrategy.Bubble, 
                 typeof(RoutedEventHandler), typeof(HighlightedTextBlock));
@@ -86,6 +90,12 @@ namespace TwitchChatViewer
         {
             get => (Platform)GetValue(SourcePlatformProperty);
             set => SetValue(SourcePlatformProperty, value);
+        }
+
+        public bool ShowTimestamp
+        {
+            get => (bool)GetValue(ShowTimestampProperty);
+            set => SetValue(ShowTimestampProperty, value);
         }        private RichTextBox _richTextBox;
 
         public HighlightedTextBlock()
@@ -156,39 +166,62 @@ namespace TwitchChatViewer
             {
                 control.UpdateContent();
             }
+        }
+
+        private static void OnShowTimestampChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is HighlightedTextBlock control)
+            {
+                control.UpdateContent();
+            }
         }        private void UpdateContent()
         {
             _richTextBox.Document.Blocks.Clear();
 
             if (MessageParts == null || MessageParts.Count == 0)
                 return;            var paragraph = new Paragraph();
-              // Calculate the width of just the timestamp and space to align wrapped lines
-            var timestampFontSize = _richTextBox.FontSize * 0.85; // Make timestamp 15% smaller
-            var timestampText = $"[{Timestamp:hh:mm:ss tt}] ";
-            var formattedText = new FormattedText(
-                timestampText,
-                System.Globalization.CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight,
-                new Typeface(_richTextBox.FontFamily, _richTextBox.FontStyle, _richTextBox.FontWeight, _richTextBox.FontStretch),
-                timestampFontSize,
-                Brushes.Black,
-                VisualTreeHelper.GetDpi(this).PixelsPerDip);
-
-            var timestampWidth = formattedText.Width;            // Set hanging indent - subsequent lines will start at the beginning of the username
-            // Reduce left margin by 3 pixels to move content closer to the left side
-            paragraph.TextIndent = -timestampWidth;
-            paragraph.Margin = new Thickness(timestampWidth - 3, 0, 0, 0);
-
-            // Create timestamp run with brackets
-            var timestampRun = new Run($"[{Timestamp:hh:mm:ss tt}]")
+            
+            double timestampWidth = 0;
+            
+            // Only add timestamp if ShowTimestamp is true
+            if (ShowTimestamp)
             {
-                Foreground = new SolidColorBrush(Color.FromRgb(128, 128, 128)), // #808080
-                FontSize = timestampFontSize
-            };
-            paragraph.Inlines.Add(timestampRun);
+                // Calculate the width of just the timestamp and space to align wrapped lines
+                var timestampFontSize = _richTextBox.FontSize * 0.85; // Make timestamp 15% smaller
+                var timestampText = $"[{Timestamp:hh:mm:ss tt}] ";
+                var formattedText = new FormattedText(
+                    timestampText,
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    new Typeface(_richTextBox.FontFamily, _richTextBox.FontStyle, _richTextBox.FontWeight, _richTextBox.FontStretch),
+                    timestampFontSize,
+                    Brushes.Black,
+                    VisualTreeHelper.GetDpi(this).PixelsPerDip);
 
-            // Add space after timestamp
-            paragraph.Inlines.Add(new Run(" "));            // Create username run with click functionality and platform-based coloring
+                timestampWidth = formattedText.Width;
+                
+                // Set hanging indent - subsequent lines will start at the beginning of the username
+                // Reduce left margin by 3 pixels to move content closer to the left side
+                paragraph.TextIndent = -timestampWidth;
+                paragraph.Margin = new Thickness(timestampWidth - 3, 0, 0, 0);
+
+                // Create timestamp run with brackets
+                var timestampRun = new Run($"[{Timestamp:hh:mm:ss tt}]")
+                {
+                    Foreground = new SolidColorBrush(Color.FromRgb(128, 128, 128)), // #808080
+                    FontSize = timestampFontSize
+                };
+                paragraph.Inlines.Add(timestampRun);
+
+                // Add space after timestamp
+                paragraph.Inlines.Add(new Run(" "));
+            }
+            else
+            {
+                // No timestamp, reset margin and indent
+                paragraph.TextIndent = 0;
+                paragraph.Margin = new Thickness(0, 0, 0, 0);
+            }            // Create username run with click functionality and platform-based coloring
             var usernameBrush = IsSystemMessage ? 
                 new SolidColorBrush(Color.FromRgb(220, 220, 170)) : // #dcdcaa for system messages
                 GetPlatformUsernameColor(SourcePlatform);
