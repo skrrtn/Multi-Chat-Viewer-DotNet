@@ -181,13 +181,6 @@ The executable will be created in `bin\Release\net8.0-windows\win-x64\publish\`
 - **Click Usernames**: Click any username in chat to view that user's complete message history
 - **Click @Mentions**: Click on @mentions (highlighted in orange) to view mentioned user's messages
 
-### Automatic Database Migration
-- **Legacy Database Support**: Built-in automatic migration for existing Twitch-only databases to the new multi-platform format
-- **Seamless Migration**: Automatically detects and migrates legacy databases on application startup
-- **Platform Metadata**: Adds platform information to legacy databases (defaults to Twitch for existing databases)
-- **Safe Migration**: Non-destructive process that preserves all existing data and removes old files after successful migration
-- **No User Action Required**: Migration happens automatically - no manual intervention needed
-
 ### Advanced Features
 - **Multi-Channel View Management**: Switch between different channels in the main window while monitoring all in the background
 - **Menu Font Scaling**: Use View → Font Scaling to choose preset sizes (50%-200%)
@@ -263,7 +256,6 @@ Each channel database includes:
 - **messages table**: Stores chat messages with timestamps, usernames, and content
 - **metadata table**: Stores platform information and other database metadata
 - **Platform Detection**: Databases are automatically identified by platform metadata, not filename
-- **Migration Support**: Legacy databases are automatically upgraded to include platform metadata
 
 ## Troubleshooting
 
@@ -313,11 +305,6 @@ Each channel database includes:
    - **Missing Background Messages**: Channels collect messages in background even when not viewed - check logging is enabled
    - **Channel Switching**: Use "Enable" or "Disable" button in the **Multi-View column** to switch between channels for viewing
    - **Multiple Kick Channels**: Remove existing Kick channel before adding a new one due to platform limitations
-
-8. **Migration Issues**:
-   - If automatic migration fails, check that database files are not in use by other applications
-   - Migration is non-destructive and will be retried on next startup if needed
-   - Check application logs for detailed migration error information
 
 ## Development
 

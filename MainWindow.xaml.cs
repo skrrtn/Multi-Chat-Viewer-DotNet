@@ -752,33 +752,6 @@ namespace TwitchChatViewer
             {
                 // Ensure we start in loading state (should already be true from initialization)
                 IsLoading = true;
-                LoadingMessage = "Checking database migrations...";
-                
-                _logger.LogInformation("Checking for database migrations...");
-                
-                // Run database migration before loading channels
-                var dbDirectory = Path.Combine(Directory.GetCurrentDirectory(), "db");
-                if (Directory.Exists(dbDirectory))
-                {
-                    var migrationHelper = new DatabaseMigrationHelper(dbDirectory);
-                    var migrationResult = await migrationHelper.MigrateAllDatabasesAsync();
-                    
-                    if (migrationResult.HasChanges)
-                    {
-                        _logger.LogInformation("Database migration completed. Migrated {Count} databases: {Databases}", 
-                            migrationResult.MigratedDatabases.Count, string.Join(", ", migrationResult.MigratedDatabases));
-                    }
-                    
-                    if (migrationResult.HasErrors)
-                    {
-                        _logger.LogWarning("Database migration completed with errors: {Errors}", migrationResult.ErrorMessage);
-                    }
-                }
-                else
-                {
-                    _logger.LogDebug("No database directory found, skipping migration");
-                }
-                
                 LoadingMessage = "Loading followed channels...";
                 _logger.LogInformation("Loading followed channels from storage...");
                 await _multiChannelManager.LoadFollowedChannelsAsync();
