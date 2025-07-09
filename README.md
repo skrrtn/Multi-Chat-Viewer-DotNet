@@ -2,7 +2,7 @@
 
 A native Windows application built with C# and WPF that connects to Twitch IRC and Kick.com chat to display real-time chat messages from both platforms with advanced multi-platform support.
 
-![Screenshot](screenshot.png)
+![Screenshot](Assets/screenshot.png)
 
 ## Features
 
