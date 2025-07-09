@@ -1666,14 +1666,11 @@ namespace MultiChatViewer
                     
                     if (shouldBeOpen && (_streamerMentionsWindow == null || !_isStreamerMentionsWindowOpen))
                     {
-                        // Create and show the Streamer Mentions window
-                        _streamerMentionsWindow = new StreamerMentionsWindow(_serviceProvider, null);
+                        // Create and show the Streamer Mentions window with current timestamp setting
+                        _streamerMentionsWindow = new StreamerMentionsWindow(_serviceProvider, null, ShowTimestamps);
                         
                         // Subscribe to the Closed event to update our state
                         _streamerMentionsWindow.Closed += StreamerMentionsWindow_Closed;
-                        
-                        // Sync the timestamp setting with the main window
-                        _streamerMentionsWindow.UpdateTimestampSetting(ShowTimestamps);
                         
                         _streamerMentionsWindow.Show();
                         IsStreamerMentionsWindowOpen = true;

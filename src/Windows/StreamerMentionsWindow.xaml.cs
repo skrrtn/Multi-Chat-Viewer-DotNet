@@ -19,6 +19,7 @@ namespace MultiChatViewer
         private string _currentChannelName;
         private double _chatFontSize = 12.0; // Default font size
         private bool _showTimestamps = true; // Default to showing timestamps (matches main window)
+        private bool _timestampExplicitlySet = false; // Track if timestamp was explicitly set in constructor
         private bool _scrollToTopButtonVisible = false;
         private bool _isAutoScrollEnabled = true;
         private ScrollViewer _mentionsScrollViewer;
@@ -103,7 +104,7 @@ namespace MultiChatViewer
             } 
         }
 
-        public StreamerMentionsWindow(IServiceProvider serviceProvider, string channelName = null)
+        public StreamerMentionsWindow(IServiceProvider serviceProvider, string channelName = null, bool? showTimestamps = null)
         {
             InitializeComponent();
             
@@ -115,7 +116,14 @@ namespace MultiChatViewer
             // Enable dark mode title bar
             DarkModeHelper.EnableDarkMode(this);
 
-            // Load settings from configuration
+            // If showTimestamps is provided, use it immediately before loading other settings
+            if (showTimestamps.HasValue)
+            {
+                _showTimestamps = showTimestamps.Value;
+                _timestampExplicitlySet = true;
+            }
+
+            // Load settings from configuration (this will NOT override the timestamp setting if already set)
             LoadSettings();
 
             // Subscribe to message events
@@ -155,7 +163,12 @@ namespace MultiChatViewer
                 if (configService != null)
                 {
                     await configService.LoadConfigurationAsync();
-                    ShowTimestamps = configService.GetShowTimestamps();
+                    
+                    // Only load the timestamp setting from config if it wasn't explicitly set in constructor
+                    if (!_timestampExplicitlySet)
+                    {
+                        ShowTimestamps = configService.GetShowTimestamps();
+                    }
                 }
             }
             catch (Exception)
