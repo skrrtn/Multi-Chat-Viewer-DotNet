@@ -7,7 +7,7 @@
         ResizeMode="NoResize"
         Background="#1e1e1e"
         Foreground="White"
-        Icon="../../Resources/logo.ico"
+        Icon="/Resources/logo.ico"
         WindowStyle="None"
         AllowsTransparency="True">
     <Window.Resources>

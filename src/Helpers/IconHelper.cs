@@ -12,8 +12,8 @@ namespace MultiChatViewer
         {
             try
             {
-                // Try to load from WPF Resource first
-                var uri = new Uri("pack://application:,,,/logo.ico");
+                // Try to load from WPF Resource first - correct path for Resources folder
+                var uri = new Uri("pack://application:,,,/Resources/logo.ico");
                 var resource = System.Windows.Application.GetResourceStream(uri);
                 
                 if (resource != null)
@@ -22,22 +22,41 @@ namespace MultiChatViewer
                     return new Icon(resource.Stream);
                 }
                 
+                // Try alternative WPF resource path
+                var altUri = new Uri("pack://application:,,,/MultiChatViewer;component/Resources/logo.ico");
+                var altResource = System.Windows.Application.GetResourceStream(altUri);
+                
+                if (altResource != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("IconHelper: Successfully loaded logo.ico from alternative WPF resources path");
+                    return new Icon(altResource.Stream);
+                }
+                
                 // Try to get icon from executing assembly
                 var assembly = Assembly.GetExecutingAssembly();
-                var iconStream = assembly.GetManifestResourceStream("MultiChatViewer.logo.ico");
+                var iconStream = assembly.GetManifestResourceStream("MultiChatViewer.Resources.logo.ico");
                 
                 if (iconStream != null)
                 {
                     System.Diagnostics.Debug.WriteLine("IconHelper: Successfully loaded logo.ico from embedded resources");
-                    return new Icon(iconStream);                }
+                    return new Icon(iconStream);
+                }
                 
                 // Try to load from file system as fallback
                 var exeDirectory = AppContext.BaseDirectory;
-                var iconPath = Path.Combine(exeDirectory, "logo.ico");
+                var iconPath = Path.Combine(exeDirectory, "Resources", "logo.ico");
                 
                 if (File.Exists(iconPath))
                 {
                     System.Diagnostics.Debug.WriteLine($"IconHelper: Successfully loaded logo.ico from file system at {iconPath}");
+                    return new Icon(iconPath);
+                }
+                
+                // Try one more fallback location
+                iconPath = Path.Combine(exeDirectory, "logo.ico");
+                if (File.Exists(iconPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"IconHelper: Successfully loaded logo.ico from fallback file system location at {iconPath}");
                     return new Icon(iconPath);
                 }
                 

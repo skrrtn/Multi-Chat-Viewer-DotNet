@@ -9,7 +9,7 @@
         WindowStartupLocation="CenterOwner"
         Background="#1e1e1e"
         Foreground="White"
-        Icon="../../Resources/logo.ico">
+        Icon="/Resources/logo.ico">
     
     <Grid Margin="10">
         <Grid.RowDefinitions>
