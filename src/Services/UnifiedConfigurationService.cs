@@ -354,8 +354,7 @@ namespace MultiChatViewer
             var migrationTasks = new List<Task>
             {
                 MigrateChannelSettingsAsync(),
-                MigrateFollowedChannelsAsync(),
-                MigrateUserFiltersAsync()
+                MigrateFollowedChannelsAsync()
             };
 
             await Task.WhenAll(migrationTasks);
@@ -436,32 +435,7 @@ namespace MultiChatViewer
             }
         }
 
-        private async Task MigrateUserFiltersAsync()
-        {
-            var oldPath = Path.Combine(AppContext.BaseDirectory, "user_filters.json");
-            if (!File.Exists(oldPath)) return;
-
-            try
-            {
-                var json = await File.ReadAllTextAsync(oldPath);
-                var oldData = JsonSerializer.Deserialize<UserFiltersData>(json);
-                
-                if (oldData?.BlacklistedUsers != null)
-                {
-                    _config.BlacklistedUsers.AddRange(oldData.BlacklistedUsers.Where(u => !string.IsNullOrWhiteSpace(u)));
-                    _logger.LogInformation("Migrated {Count} blacklisted users", oldData.BlacklistedUsers.Count);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error migrating user filters from {Path}", oldPath);
-            }
-        }
-
-        private class UserFiltersData
-        {
-            public List<string> BlacklistedUsers { get; set; } = [];
-        }
+        // User filters migration is no longer needed - blacklists are managed by BlacklistManager
 
         /// <summary>
         /// Migrates from the old configuration format that had both 'channels' and 'followedChannels' arrays
@@ -507,7 +481,6 @@ namespace MultiChatViewer
                             _config = new AppConfiguration
                             {
                                 Channels = oldConfig.Channels,
-                                BlacklistedUsers = oldConfig.BlacklistedUsers ?? [],
                                 ConfigVersion = "1.3",
                                 LastSaved = DateTime.Now,
                                 KickClientId = oldConfig.KickClientId ?? string.Empty,
@@ -539,7 +512,6 @@ namespace MultiChatViewer
         {
             public Dictionary<string, ChannelConfig> Channels { get; set; } = [];
             public List<string> FollowedChannels { get; set; } = [];
-            public List<string> BlacklistedUsers { get; set; } = [];
             public string ConfigVersion { get; set; } = "1.0";
             public DateTime LastSaved { get; set; } = DateTime.Now;
             public string KickClientId { get; set; } = string.Empty;
@@ -611,125 +583,22 @@ namespace MultiChatViewer
 
         #region Configuration Validation
 
-        /// <summary>
-        /// Validates that the configuration file matches the in-memory configuration
-        /// </summary>
-        public async Task<bool> ValidateConfigurationFileAsync()
-        {
-            try
-            {
-                if (!File.Exists(_configFilePath))
-                {
-                    _logger.LogWarning("Configuration file does not exist for validation");
-                    return false;
-                }
-
-                var json = await File.ReadAllTextAsync(_configFilePath);
-                var fileConfig = JsonSerializer.Deserialize<AppConfiguration>(json);
-                
-                if (fileConfig == null)
-                {
-                    _logger.LogWarning("Could not deserialize configuration file for validation");
-                    return false;
-                }
-
-                lock (_lock)
-                {
-                    // Compare blacklisted users
-                    var memoryUsers = _config.BlacklistedUsers.OrderBy(u => u).ToList();
-                    var fileUsers = (fileConfig.BlacklistedUsers ?? []).OrderBy(u => u).ToList();
-                    
-                    if (!memoryUsers.SequenceEqual(fileUsers))
-                    {
-                        _logger.LogWarning("Blacklisted users mismatch between memory and file. Memory: [{MemoryUsers}], File: [{FileUsers}]",
-                            string.Join(", ", memoryUsers), string.Join(", ", fileUsers));
-                        return false;
-                    }
-                    
-                    _logger.LogDebug("Configuration validation successful: {Count} blacklisted users match", memoryUsers.Count);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error validating configuration file");
-                return false;
-            }
-        }
+        // Configuration validation for blacklisted users has been removed
+        // as blacklists are now managed by BlacklistManager
 
         #endregion
 
         #region Debugging and Force Save
 
-        /// <summary>
-        /// Forces an immediate save and verification of the configuration
-        /// </summary>
-        public async Task ForceSaveAndVerifyAsync()
-        {
-            try
-            {
-                _logger.LogInformation("Force saving configuration...");
-                await SaveConfigurationAsync();
-                
-                // Reload from file to ensure consistency
-                var fileContent = await File.ReadAllTextAsync(_configFilePath);
-                var fileConfig = JsonSerializer.Deserialize<AppConfiguration>(fileContent);
-                
-                lock (_lock)
-                {
-                    var memoryCount = _config.BlacklistedUsers.Count;
-                    var fileCount = fileConfig?.BlacklistedUsers?.Count ?? 0;
-                    
-                    if (memoryCount != fileCount)
-                    {
-                        _logger.LogError("Configuration mismatch detected! Memory has {MemoryCount} users, file has {FileCount} users", 
-                            memoryCount, fileCount);
-                        
-                        _logger.LogInformation("Memory users: [{MemoryUsers}]", string.Join(", ", _config.BlacklistedUsers));
-                        _logger.LogInformation("File users: [{FileUsers}]", string.Join(", ", fileConfig?.BlacklistedUsers ?? []));
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Configuration verification successful: {Count} users in both memory and file", memoryCount);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during force save and verify");
-                throw;
-            }
-        }
+        // Force save and verification for blacklisted users has been removed
+        // as blacklists are now managed by BlacklistManager
 
         #endregion
 
         #region Debugging and State Logging
 
-        /// <summary>
-        /// Debug method to output current configuration state
-        /// </summary>
-        public void DebugLogCurrentState()
-        {
-            lock (_lock)
-            {
-                _logger.LogInformation("=== Configuration State Debug ===");
-                _logger.LogInformation("Config file path: {Path}", _configFilePath);
-                _logger.LogInformation("Channels: {Count}", _config.Channels.Count);
-                _logger.LogInformation("Blacklisted users: {Count}", _config.BlacklistedUsers.Count);
-                
-                if (_config.BlacklistedUsers.Count > 0)
-                {
-                    _logger.LogInformation("Blacklisted users list: [{Users}]", string.Join(", ", _config.BlacklistedUsers));
-                }
-                else
-                {
-                    _logger.LogInformation("No blacklisted users in memory");
-                }
-                
-                _logger.LogInformation("Last saved: {LastSaved}", _config.LastSaved);
-                _logger.LogInformation("=== End Configuration State ===");
-            }
-        }
+        // Debug method to output current configuration state has been removed
+        // as blacklist state is now managed by BlacklistManager
 
         #endregion
     }
