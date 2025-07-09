@@ -17,7 +17,7 @@ namespace TwitchChatViewer
         private readonly string _username;        private readonly string _currentChannel;
 
         public ObservableCollection<UserChannelInfo> AvailableChannels { get; } = [];
-        public ObservableCollection<ChatMessageWithChannel> UserMessages { get; } = [];
+        public ObservableCollection<MessageDisplayItem> DisplayItems { get; } = [];
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -45,7 +45,7 @@ namespace TwitchChatViewer
 
             // Bind collections
             ChannelComboBox.ItemsSource = AvailableChannels;
-            MessagesListBox.ItemsSource = UserMessages;
+            MessagesListBox.ItemsSource = DisplayItems;
 
             // Initialize data
             _ = InitializeAsync();
@@ -118,16 +118,36 @@ namespace TwitchChatViewer
             try
             {
                 ShowLoading(true);
-                  var messages = await _userMessageService.GetUserMessagesFromChannelAsync(_username, channelInfo.ChannelName);
+                var messages = await _userMessageService.GetUserMessagesFromChannelAsync(_username, channelInfo.ChannelName);
                 
-                UserMessages.Clear();
-                foreach (var message in messages.OrderByDescending(m => m.Timestamp))
+                DisplayItems.Clear();
+                
+                // Group messages by date and add dividers
+                var sortedMessages = messages.OrderByDescending(m => m.Timestamp).ToList();
+                DateTime? lastDate = null;
+                var today = DateTime.Today;
+                
+                foreach (var message in sortedMessages)
                 {
-                    UserMessages.Add(message);
+                    var messageDate = message.Timestamp.Date;
+                    
+                    // Add date divider if this is a new day (but skip today)
+                    if (lastDate == null || lastDate.Value != messageDate)
+                    {
+                        // Only add divider if it's not today
+                        if (messageDate != today)
+                        {
+                            DisplayItems.Add(new DateDividerItem(messageDate));
+                        }
+                        lastDate = messageDate;
+                    }
+                    
+                    // Add the message
+                    DisplayItems.Add(new ChatMessageDisplayItem(message));
                 }
 
                 // Show appropriate UI state
-                if (UserMessages.Count == 0)
+                if (DisplayItems.Count == 0)
                 {
                     NoMessagesTextBlock.Visibility = Visibility.Visible;
                     MessagesListBox.Visibility = Visibility.Collapsed;

@@ -241,32 +241,78 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style>        <!-- Message Template -->
-        <DataTemplate x:Key="UserMessageTemplate">
+        </Style>        <!-- Date Divider Template -->
+        <DataTemplate x:Key="DateDividerTemplate">
+            <Border Padding="5,15" Margin="0,5">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Left line -->
+                    <Border Grid.Column="0" 
+                            Height="1" 
+                            Background="#555" 
+                            VerticalAlignment="Center" 
+                            Margin="0,0,10,0"/>
+                    
+                    <!-- Date text -->
+                    <Border Grid.Column="1" 
+                            Background="#3c3c3c" 
+                            CornerRadius="12" 
+                            Padding="10,4">
+                        <TextBlock Text="{Binding DateText}" 
+                                  Foreground="#ccc" 
+                                  FontSize="11" 
+                                  FontWeight="SemiBold"
+                                  HorizontalAlignment="Center"/>
+                    </Border>
+                    
+                    <!-- Right line -->
+                    <Border Grid.Column="2" 
+                            Height="1" 
+                            Background="#555" 
+                            VerticalAlignment="Center" 
+                            Margin="10,0,0,0"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- Chat Message Template -->
+        <DataTemplate x:Key="ChatMessageTemplate">
             <Border Padding="3,2" Margin="1,1">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Setter Property="Background" Value="Transparent"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsSystemMessage}" Value="True">
+                            <DataTrigger Binding="{Binding Message.IsSystemMessage}" Value="True">
                                 <Setter Property="Background" Value="#2d2d30"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
-                </Border.Style><StackPanel>
-                    <!-- Message content -->                    <local:HighlightedTextBlock 
-                        MessageParts="{Binding ParsedMessage}"
+                </Border.Style>
+                <StackPanel>
+                    <!-- Message content -->                    
+                    <local:HighlightedTextBlock 
+                        MessageParts="{Binding Message.ParsedMessage}"
                         CustomFontSize="12"
-                        Timestamp="{Binding Timestamp}"
-                        Username="{Binding Username}"
-                        IsSystemMessage="{Binding IsSystemMessage}"
-                        SourcePlatform="{Binding SourcePlatform}"
+                        Timestamp="{Binding Message.Timestamp}"
+                        Username="{Binding Message.Username}"
+                        IsSystemMessage="{Binding Message.IsSystemMessage}"
+                        SourcePlatform="{Binding Message.SourcePlatform}"
                         VerticalAlignment="Top"
                         MentionClick="HighlightedTextBlock_MentionClick"
                         UsernameClick="HighlightedTextBlock_UsernameClick"/>
                 </StackPanel>
             </Border>
         </DataTemplate>
+
+        <!-- Template Selector -->
+        <local:MessageDisplayTemplateSelector x:Key="MessageTemplateSelector"
+                                            DateDividerTemplate="{StaticResource DateDividerTemplate}"
+                                            ChatMessageTemplate="{StaticResource ChatMessageTemplate}"/>
 
     </Window.Resources>
 
@@ -326,7 +372,7 @@
                         Foreground="White"
                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                         ScrollViewer.VerticalScrollBarVisibility="Auto"
-                        ItemTemplate="{StaticResource UserMessageTemplate}"
+                        ItemTemplateSelector="{StaticResource MessageTemplateSelector}"
                         VirtualizingPanel.IsVirtualizing="True"
                         VirtualizingPanel.VirtualizationMode="Recycling">
                     <ListBox.Resources>
