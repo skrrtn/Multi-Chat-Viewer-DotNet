@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {    public class FollowedChannel : INotifyPropertyChanged
     {
         private bool _isConnected;
@@ -1155,7 +1155,7 @@ namespace TwitchChatViewer
         public async Task<string> RunDiagnosticsAsync()
         {
             var diagnostics = new StringBuilder();
-            diagnostics.AppendLine("🔧 TwitchChatViewer Diagnostics");
+            diagnostics.AppendLine("🔧 MultiChatViewer Diagnostics");
             diagnostics.AppendLine("=" + new string('=', 40));
             
             try

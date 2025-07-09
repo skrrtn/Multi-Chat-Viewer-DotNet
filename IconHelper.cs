@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.Versioning;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public static class IconHelper
     {        [SupportedOSPlatform("windows6.1")]
@@ -24,7 +24,7 @@ namespace TwitchChatViewer
                 
                 // Try to get icon from executing assembly
                 var assembly = Assembly.GetExecutingAssembly();
-                var iconStream = assembly.GetManifestResourceStream("TwitchChatViewer.logo.ico");
+                var iconStream = assembly.GetManifestResourceStream("MultiChatViewer.logo.ico");
                 
                 if (iconStream != null)
                 {

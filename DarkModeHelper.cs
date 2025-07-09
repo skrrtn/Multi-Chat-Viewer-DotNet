@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     /// <summary>
     /// Utility class to enable dark mode title bar on Windows 10/11

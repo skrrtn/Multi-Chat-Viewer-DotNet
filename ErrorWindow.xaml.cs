@@ -2,7 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public partial class ErrorWindow : Window
     {

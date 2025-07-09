@@ -5,7 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {    public partial class HighlightedTextBlock : UserControl
     {
         public static readonly DependencyProperty MessagePartsProperty =

@@ -1,6 +1,6 @@
 using System;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     /// <summary>
     /// Base class for items that can be displayed in the messages list

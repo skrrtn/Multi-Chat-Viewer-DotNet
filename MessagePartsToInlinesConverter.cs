@@ -7,7 +7,7 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public class MessagePartsToInlinesConverter : IMultiValueConverter
     {        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)

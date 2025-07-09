@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public static partial class UpdateChecker
     {
@@ -16,7 +16,7 @@ namespace TwitchChatViewer
             try
             {
                 using var client = new HttpClient();
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("TwitchChatViewer/1.0");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("MultiChatViewer/1.0");
                 var response = await client.GetAsync(LatestReleaseApiUrl);
                 response.EnsureSuccessStatusCode();
                 var json = await response.Content.ReadAsStringAsync();

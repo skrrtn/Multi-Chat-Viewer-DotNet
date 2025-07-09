@@ -6,7 +6,7 @@ using System.Linq;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {    public class ChatDatabaseService(ILogger<ChatDatabaseService> logger)
     {
         private readonly ILogger<ChatDatabaseService> _logger = logger;

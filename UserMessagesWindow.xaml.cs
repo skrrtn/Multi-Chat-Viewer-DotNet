@@ -8,7 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.Logging;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public partial class UserMessagesWindow : Window, INotifyPropertyChanged
     {

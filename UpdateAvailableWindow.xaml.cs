@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public partial class UpdateAvailableWindow : Window
     {

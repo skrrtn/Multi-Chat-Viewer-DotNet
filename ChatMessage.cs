@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public class MessagePart
     {

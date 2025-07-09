@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public class KickCredentials
     {

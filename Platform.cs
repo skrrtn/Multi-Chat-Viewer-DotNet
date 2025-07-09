@@ -1,4 +1,4 @@
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public enum Platform
     {

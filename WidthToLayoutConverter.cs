@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows.Data;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     /// <summary>
     /// Converter that returns true when window width is narrow (triggers vertical layout)

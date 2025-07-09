@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public interface IChatClient : IDisposable
     {

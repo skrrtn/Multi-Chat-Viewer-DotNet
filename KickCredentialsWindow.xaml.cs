@@ -1,7 +1,7 @@
 using System;
 using System.Windows;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public partial class KickCredentialsWindow : Window
     {

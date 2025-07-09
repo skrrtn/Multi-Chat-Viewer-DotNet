@@ -6,7 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public partial class UserFiltersWindow : Window
     {

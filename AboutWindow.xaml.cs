@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Navigation;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public partial class AboutWindow : Window
     {        public AboutWindow()

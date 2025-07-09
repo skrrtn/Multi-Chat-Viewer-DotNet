@@ -4,7 +4,7 @@ using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {    public partial class App : Application
     {
         private ServiceProvider _serviceProvider;

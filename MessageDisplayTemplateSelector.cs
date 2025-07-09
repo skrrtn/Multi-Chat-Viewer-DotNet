@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     /// <summary>
     /// Data template selector for message display items

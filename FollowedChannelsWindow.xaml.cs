@@ -10,7 +10,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {    public partial class FollowedChannelsWindow : Window, INotifyPropertyChanged
     {
         private readonly MultiChannelManager _channelManager;

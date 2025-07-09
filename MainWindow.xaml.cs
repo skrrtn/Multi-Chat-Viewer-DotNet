@@ -15,7 +15,7 @@ using System.Windows.Forms;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {    public partial class MainWindow : Window, INotifyPropertyChanged
     {        private readonly TwitchIrcClient _twitchClient;
         private readonly ChatDatabaseService _databaseService;

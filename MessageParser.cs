@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public static partial class MessageParser
     {

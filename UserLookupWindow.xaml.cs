@@ -12,7 +12,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public partial class UserLookupWindow : Window, INotifyPropertyChanged
     {

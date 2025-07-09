@@ -1,4 +1,4 @@
-<Window x:Class="TwitchChatViewer.AboutWindow"
+<Window x:Class="MultiChatViewer.AboutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"        Title="About Multi Chat Viewer" 
         Height="500" 

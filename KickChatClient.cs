@@ -8,7 +8,7 @@ using KickLib.Client.Models.Args;
 using KickLib.Core;
 using KickLib.Api.Unofficial;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public class KickChatClient : IChatClient
     {

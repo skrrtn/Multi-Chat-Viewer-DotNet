@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows.Data;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public class UnderscoreToSpaceConverter : IValueConverter
     {

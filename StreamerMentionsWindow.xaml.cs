@@ -10,7 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public partial class StreamerMentionsWindow : Window, INotifyPropertyChanged
     {

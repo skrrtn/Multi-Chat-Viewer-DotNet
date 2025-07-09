@@ -6,7 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 
-namespace TwitchChatViewer
+namespace MultiChatViewer
 {
     public class UserMessageLookupService(ILogger<UserMessageLookupService> logger)
     {
