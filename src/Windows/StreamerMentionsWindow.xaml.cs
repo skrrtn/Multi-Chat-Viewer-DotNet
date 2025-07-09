@@ -432,11 +432,24 @@ namespace MultiChatViewer
                         // Get logger for UserMessagesWindow - it still uses logging
                         var logger = _serviceProvider.GetService<Microsoft.Extensions.Logging.ILogger<UserMessagesWindow>>();
                         
+                        // Use the source channel from the clicked message if available, otherwise use current channel context
+                        string targetChannel = null;
+                        if (!string.IsNullOrEmpty(mentionArgs.SourceChannel))
+                        {
+                            // Construct the complete channel identifier including platform from the message source
+                            targetChannel = $"{mentionArgs.SourceChannel.ToLower()}_{mentionArgs.SourcePlatform.ToString().ToLower()}";
+                        }
+                        else if (!string.IsNullOrEmpty(CurrentChannelName))
+                        {
+                            // Fall back to current channel context
+                            targetChannel = CurrentChannelName;
+                        }
+                        
                         var userMessagesWindow = new UserMessagesWindow(
                             userMessageService,
                             logger,
                             mentionArgs.MentionedUsername,
-                            CurrentChannelName
+                            targetChannel
                         )
                         {
                             Owner = this
@@ -470,11 +483,24 @@ namespace MultiChatViewer
                         // Get logger for UserMessagesWindow - it still uses logging
                         var logger = _serviceProvider.GetService<Microsoft.Extensions.Logging.ILogger<UserMessagesWindow>>();
                         
+                        // Use the source channel from the clicked message if available, otherwise use current channel context
+                        string targetChannel = null;
+                        if (!string.IsNullOrEmpty(usernameArgs.SourceChannel))
+                        {
+                            // Construct the complete channel identifier including platform from the message source
+                            targetChannel = $"{usernameArgs.SourceChannel.ToLower()}_{usernameArgs.SourcePlatform.ToString().ToLower()}";
+                        }
+                        else if (!string.IsNullOrEmpty(CurrentChannelName))
+                        {
+                            // Fall back to current channel context
+                            targetChannel = CurrentChannelName;
+                        }
+                        
                         var userMessagesWindow = new UserMessagesWindow(
                             userMessageService,
                             logger,
                             usernameArgs.Username,
-                            CurrentChannelName
+                            targetChannel
                         )
                         {
                             Owner = this

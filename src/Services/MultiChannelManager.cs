@@ -743,8 +743,13 @@ namespace MultiChatViewer
                 }
 
                 // Notify listeners (this will notify MainWindow to display the message)
-                // Use the channel name (not the key) for the event
+                // Use the channel name (not the key) for the event and set source information
                 var eventChannelName = ExtractChannelName(channelKey);
+                
+                // Set the source channel and platform for proper channel context
+                message.SourceChannel = eventChannelName;
+                message.SourcePlatform = ExtractPlatform(channelKey);
+                
                 MessageReceived?.Invoke(this, (eventChannelName, message));
             }
             catch (Exception ex)

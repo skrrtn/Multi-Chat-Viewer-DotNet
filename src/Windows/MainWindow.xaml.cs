@@ -336,17 +336,23 @@ namespace MultiChatViewer
             if (e is UsernameClickEventArgs usernameArgs && !string.IsNullOrEmpty(usernameArgs.Username))
             {
                 try
-                {                    _logger.LogInformation("Opening user messages window for user: {Username}", usernameArgs.Username);
+                {                    _logger.LogInformation("Opening user messages window for user: {Username} from channel: {SourceChannel}", usernameArgs.Username, usernameArgs.SourceChannel);
                     
                     // Get required dependencies from service provider
                     var userMessageService = _serviceProvider.GetRequiredService<UserMessageLookupService>();
                     var logger = _serviceProvider.GetRequiredService<ILogger<UserMessagesWindow>>();
 
-                    // Construct the complete channel identifier including platform
-                    string currentChannelWithPlatform = null;
-                    if (!string.IsNullOrEmpty(CurrentChannel))
+                    // Use the source channel from the clicked message if available, otherwise fall back to current channel
+                    string targetChannel = null;
+                    if (!string.IsNullOrEmpty(usernameArgs.SourceChannel))
                     {
-                        currentChannelWithPlatform = $"{CurrentChannel.ToLower()}_{CurrentChannelPlatform.ToString().ToLower()}";
+                        // Construct the complete channel identifier including platform from the message source
+                        targetChannel = $"{usernameArgs.SourceChannel.ToLower()}_{usernameArgs.SourcePlatform.ToString().ToLower()}";
+                    }
+                    else if (!string.IsNullOrEmpty(CurrentChannel))
+                    {
+                        // Fall back to current channel with platform
+                        targetChannel = $"{CurrentChannel.ToLower()}_{CurrentChannelPlatform.ToString().ToLower()}";
                     }
 
                     // Create UserMessagesWindow with required dependencies
@@ -354,7 +360,7 @@ namespace MultiChatViewer
                         userMessageService,
                         logger,
                         usernameArgs.Username,
-                        currentChannelWithPlatform
+                        targetChannel
                     )
                     {
                         Owner = this
@@ -381,17 +387,31 @@ namespace MultiChatViewer
             {
                 try
                 {
-                    _logger.LogInformation("Opening user messages window for mentioned user: {Username}", mentionArgs.MentionedUsername);
+                    _logger.LogInformation("Opening user messages window for mentioned user: {Username} from channel: {SourceChannel}", mentionArgs.MentionedUsername, mentionArgs.SourceChannel);
                     
                     // Get required dependencies from service provider
                     var userMessageService = _serviceProvider.GetRequiredService<UserMessageLookupService>();
                     var logger = _serviceProvider.GetRequiredService<ILogger<UserMessagesWindow>>();
-                      // Create UserMessagesWindow with required dependencies
+
+                    // Use the source channel from the clicked message if available, otherwise fall back to current channel
+                    string targetChannel = null;
+                    if (!string.IsNullOrEmpty(mentionArgs.SourceChannel))
+                    {
+                        // Construct the complete channel identifier including platform from the message source
+                        targetChannel = $"{mentionArgs.SourceChannel.ToLower()}_{mentionArgs.SourcePlatform.ToString().ToLower()}";
+                    }
+                    else if (!string.IsNullOrEmpty(CurrentChannel))
+                    {
+                        // Fall back to current channel
+                        targetChannel = CurrentChannel;
+                    }
+
+                    // Create UserMessagesWindow with required dependencies
                     var userMessagesWindow = new UserMessagesWindow(
                         userMessageService,
                         logger,
                         mentionArgs.MentionedUsername,
-                        CurrentChannel
+                        targetChannel
                     )
                     {
                         Owner = this

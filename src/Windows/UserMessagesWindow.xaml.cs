@@ -222,14 +222,23 @@ namespace MultiChatViewer
             if (e is MentionClickEventArgs mentionArgs && !string.IsNullOrEmpty(mentionArgs.MentionedUsername))
             {
                 try
-                {                    _logger.LogInformation("Opening user messages window for mentioned user: {Username}", mentionArgs.MentionedUsername);
+                {                    _logger.LogInformation("Opening user messages window for mentioned user: {Username} from channel: {SourceChannel}", mentionArgs.MentionedUsername, mentionArgs.SourceChannel);
+                    
+                    // Use the source channel from the clicked message if available
+                    string targetChannel = null;
+                    if (!string.IsNullOrEmpty(mentionArgs.SourceChannel))
+                    {
+                        // Construct the complete channel identifier including platform from the message source
+                        targetChannel = $"{mentionArgs.SourceChannel.ToLower()}_{mentionArgs.SourcePlatform.ToString().ToLower()}";
+                    }
+                    // Note: No fallback to current channel - let the user choose from the mentioned user's channels
                     
                     // Create another UserMessagesWindow for the mentioned user
                     var userMessagesWindow = new UserMessagesWindow(
                         _userMessageService,
                         _logger,
                         mentionArgs.MentionedUsername,
-                        null // No specific channel filter for mentioned user
+                        targetChannel // Pass the source channel to default to it
                     )
                     {
                         Owner = this.Owner // Set the same owner as this window
@@ -257,14 +266,23 @@ namespace MultiChatViewer
             {
                 try
                 {
-                    _logger.LogInformation("Opening user messages window for message author: {Username}", usernameArgs.Username);
+                    _logger.LogInformation("Opening user messages window for message author: {Username} from channel: {SourceChannel}", usernameArgs.Username, usernameArgs.SourceChannel);
+                    
+                    // Use the source channel from the clicked message if available
+                    string targetChannel = null;
+                    if (!string.IsNullOrEmpty(usernameArgs.SourceChannel))
+                    {
+                        // Construct the complete channel identifier including platform from the message source
+                        targetChannel = $"{usernameArgs.SourceChannel.ToLower()}_{usernameArgs.SourcePlatform.ToString().ToLower()}";
+                    }
+                    // Note: No fallback to current channel - let the user choose from the clicked user's channels
                     
                     // Create another UserMessagesWindow for the username that was clicked
                     var userMessagesWindow = new UserMessagesWindow(
                         _userMessageService,
                         _logger,
                         usernameArgs.Username,
-                        null // No specific channel filter for clicked user
+                        targetChannel // Pass the source channel to default to it
                     )
                     {
                         Owner = this.Owner // Set the same owner as this window

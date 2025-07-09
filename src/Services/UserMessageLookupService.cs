@@ -146,6 +146,7 @@ namespace MultiChatViewer
                         Timestamp = reader.GetDateTime(2),
                         IsSystemMessage = reader.GetBoolean(3),
                         ChannelName = channelName,
+                        SourceChannel = channelName,  // Set source channel for proper context
                         SourcePlatform = detectedPlatform  // Set the detected platform
                     };
                     
@@ -337,6 +338,7 @@ namespace MultiChatViewer
                         Timestamp = reader.GetDateTime(2),
                         IsSystemMessage = reader.GetBoolean(3),
                         ChannelName = channelName,
+                        SourceChannel = channelName,  // Set source channel for proper context
                         SourcePlatform = detectedPlatform  // Set the detected platform
                     };
                     

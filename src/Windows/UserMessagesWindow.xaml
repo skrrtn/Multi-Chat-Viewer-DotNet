@@ -302,6 +302,7 @@
                         Username="{Binding Message.Username}"
                         IsSystemMessage="{Binding Message.IsSystemMessage}"
                         SourcePlatform="{Binding Message.SourcePlatform}"
+                        SourceChannel="{Binding Message.SourceChannel}"
                         VerticalAlignment="Top"
                         MentionClick="HighlightedTextBlock_MentionClick"
                         UsernameClick="HighlightedTextBlock_UsernameClick"/>

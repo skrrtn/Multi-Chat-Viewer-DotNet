@@ -165,6 +165,7 @@
                     Username="{Binding Username}"
                     IsSystemMessage="{Binding IsSystemMessage}"
                     SourcePlatform="{Binding SourcePlatform}"
+                    SourceChannel="{Binding SourceChannel}"
                     ShowTimestamp="{Binding DataContext.ShowTimestamps, RelativeSource={RelativeSource AncestorType=Window}}"
                     VerticalAlignment="Top"
                     MentionClick="HighlightedTextBlock_MentionClick"

@@ -32,6 +32,10 @@ namespace MultiChatViewer
             DependencyProperty.Register(nameof(SourcePlatform), typeof(Platform), typeof(HighlightedTextBlock),
                 new PropertyMetadata(Platform.Twitch, OnSourcePlatformChanged));
 
+        public static readonly DependencyProperty SourceChannelProperty =
+            DependencyProperty.Register(nameof(SourceChannel), typeof(string), typeof(HighlightedTextBlock),
+                new PropertyMetadata(string.Empty, OnSourceChannelChanged));
+
         public static readonly DependencyProperty ShowTimestampProperty =
             DependencyProperty.Register(nameof(ShowTimestamp), typeof(bool), typeof(HighlightedTextBlock),
                 new PropertyMetadata(true, OnShowTimestampChanged));        // Event for username clicks
@@ -90,6 +94,12 @@ namespace MultiChatViewer
         {
             get => (Platform)GetValue(SourcePlatformProperty);
             set => SetValue(SourcePlatformProperty, value);
+        }
+
+        public string SourceChannel
+        {
+            get => (string)GetValue(SourceChannelProperty);
+            set => SetValue(SourceChannelProperty, value);
         }
 
         public bool ShowTimestamp
@@ -161,6 +171,14 @@ namespace MultiChatViewer
         }
 
         private static void OnSourcePlatformChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is HighlightedTextBlock control)
+            {
+                control.UpdateContent();
+            }
+        }
+
+        private static void OnSourceChannelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is HighlightedTextBlock control)
             {
@@ -242,8 +260,8 @@ namespace MultiChatViewer
             
             usernameHyperlink.Click += (sender, e) =>
             {
-                // Raise the UsernameClick event
-                var args = new UsernameClickEventArgs(UsernameClickEvent, this, Username);
+                // Raise the UsernameClick event with source channel and platform information
+                var args = new UsernameClickEventArgs(UsernameClickEvent, this, Username, SourceChannel, SourcePlatform);
                 RaiseEvent(args);
             };
 
@@ -273,8 +291,8 @@ namespace MultiChatViewer
                     
                     mentionHyperlink.Click += (sender, e) =>
                     {
-                        // Raise the MentionClick event with the mentioned username (without @)
-                        var args = new MentionClickEventArgs(MentionClickEvent, this, part.MentionedUsername);
+                        // Raise the MentionClick event with the mentioned username (without @) and source channel/platform
+                        var args = new MentionClickEventArgs(MentionClickEvent, this, part.MentionedUsername, SourceChannel, SourcePlatform);
                         RaiseEvent(args);
                     };
 
@@ -308,12 +326,16 @@ namespace MultiChatViewer
             };
         }
     }    // Custom event args for username clicks
-    public class UsernameClickEventArgs(RoutedEvent routedEvent, object source, string username) : RoutedEventArgs(routedEvent, source)
+    public class UsernameClickEventArgs(RoutedEvent routedEvent, object source, string username, string sourceChannel = null, Platform sourcePlatform = Platform.Twitch) : RoutedEventArgs(routedEvent, source)
     {
         public string Username { get; } = username;
+        public string SourceChannel { get; } = sourceChannel ?? string.Empty;
+        public Platform SourcePlatform { get; } = sourcePlatform;
     }    // Custom event args for mention clicks
-    public class MentionClickEventArgs(RoutedEvent routedEvent, object source, string mentionedUsername) : RoutedEventArgs(routedEvent, source)
+    public class MentionClickEventArgs(RoutedEvent routedEvent, object source, string mentionedUsername, string sourceChannel = null, Platform sourcePlatform = Platform.Twitch) : RoutedEventArgs(routedEvent, source)
     {
         public string MentionedUsername { get; } = mentionedUsername;
+        public string SourceChannel { get; } = sourceChannel ?? string.Empty;
+        public Platform SourcePlatform { get; } = sourcePlatform;
     }
 }
