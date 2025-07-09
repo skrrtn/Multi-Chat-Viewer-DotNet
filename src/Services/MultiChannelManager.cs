@@ -251,12 +251,15 @@ namespace MultiChatViewer
         public void OnChannelViewingToggled(string channelName, bool viewingEnabled)
         {
             ChannelViewingToggled?.Invoke(this, (channelName, viewingEnabled));
-        }public async Task LoadFollowedChannelsAsync()
+        }        public async Task LoadFollowedChannelsAsync()
         {
             try
             {
                 _logger.LogInformation("Loading channel settings...");
                 await _settingsManager.LoadSettingsAsync();
+                
+                _logger.LogInformation("Initializing user filter service...");
+                await _userFilterService.InitializeAsync();
                 
                 _logger.LogInformation("Discovering channels from existing database files...");
                 

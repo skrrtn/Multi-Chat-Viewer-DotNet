@@ -11,7 +11,6 @@ namespace MultiChatViewer
     public class AppConfiguration
     {
         public Dictionary<string, ChannelConfig> Channels { get; set; } = [];
-        public List<string> BlacklistedUsers { get; set; } = [];
         public string ConfigVersion { get; set; } = "1.3";
         public DateTime LastSaved { get; set; } = DateTime.Now;
         
@@ -51,10 +50,29 @@ namespace MultiChatViewer
             _logger = logger;
             _configFilePath = Path.Combine(AppContext.BaseDirectory, "app_config.json");
             _logger.LogInformation("UnifiedConfigurationService initialized with path: {Path}", _configFilePath);
+            
+            // Validate the directory exists and is writable
+            try
+            {
+                var directory = Path.GetDirectoryName(_configFilePath);
+                if (!Directory.Exists(directory))
+                {
+                    _logger.LogWarning("Configuration directory does not exist, creating: {Directory}", directory);
+                    Directory.CreateDirectory(directory);
+                }
+                
+                // Test write access
+                var testFile = Path.Combine(directory, "write_test.tmp");
+                File.WriteAllText(testFile, "test");
+                File.Delete(testFile);
+                _logger.LogDebug("Configuration directory write access verified");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to verify write access to configuration directory: {Directory}", 
+                    Path.GetDirectoryName(_configFilePath));
+            }
         }
-
-        public event EventHandler<string> UserAdded;
-        public event EventHandler<string> UserRemoved;
 
         #region Configuration Loading/Saving
 
@@ -85,11 +103,14 @@ namespace MultiChatViewer
                     lock (_lock)
                     {
                         _config = JsonSerializer.Deserialize<AppConfiguration>(json) ?? new AppConfiguration();
+                        
+                        // Ensure channels dictionary is properly initialized
+                        _config.Channels ??= [];
                     }
                 }
 
-                _logger.LogInformation("Loaded configuration: {ChannelCount} channels, {BlacklistCount} blacklisted users",
-                    _config.Channels.Count, _config.BlacklistedUsers.Count);
+                _logger.LogInformation("Loaded configuration: {ChannelCount} channels",
+                    _config.Channels.Count);
             }
             catch (Exception ex)
             {
@@ -106,18 +127,45 @@ namespace MultiChatViewer
                 lock (_lock)
                 {
                     _config.LastSaved = DateTime.Now;
-                    configToSave = _config;
+                    // Create a deep copy to ensure we're not saving a reference that could change
+                    configToSave = new AppConfiguration
+                    {
+                        Channels = new Dictionary<string, ChannelConfig>(_config.Channels),
+                        ConfigVersion = _config.ConfigVersion,
+                        LastSaved = _config.LastSaved,
+                        ShowTimestamps = _config.ShowTimestamps,
+                        KickClientId = _config.KickClientId,
+                        KickClientSecret = _config.KickClientSecret
+                    };
                 }
 
                 var json = JsonSerializer.Serialize(configToSave, JsonOptions);
+                
+                // Force flush to ensure the file is written immediately
                 await File.WriteAllTextAsync(_configFilePath, json);
-
-                _logger.LogInformation("Saved configuration: {ChannelCount} channels, {BlacklistCount} blacklisted users",
-                    configToSave.Channels.Count, configToSave.BlacklistedUsers.Count);
+                
+                _logger.LogInformation("Successfully saved configuration to {Path}: {ChannelCount} channels",
+                    _configFilePath, configToSave.Channels.Count);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "Access denied when saving configuration to {Path}. Check file permissions.", _configFilePath);
+                throw new InvalidOperationException($"Cannot save configuration - access denied to file: {_configFilePath}", ex);
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                _logger.LogError(ex, "Directory not found when saving configuration to {Path}", _configFilePath);
+                throw new InvalidOperationException($"Cannot save configuration - directory not found: {Path.GetDirectoryName(_configFilePath)}", ex);
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "IO error when saving configuration to {Path}", _configFilePath);
+                throw new InvalidOperationException($"Cannot save configuration - IO error: {ex.Message}", ex);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving configuration to {Path}", _configFilePath);
+                _logger.LogError(ex, "Unexpected error saving configuration to {Path}: {ErrorType} - {ErrorMessage}", 
+                    _configFilePath, ex.GetType().Name, ex.Message);
                 throw;
             }
         }
@@ -297,86 +345,6 @@ namespace MultiChatViewer
 
         #endregion
 
-        #region User Filtering
-
-        public bool IsUserBlacklisted(string username)
-        {
-            if (string.IsNullOrWhiteSpace(username))
-                return false;
-
-            lock (_lock)
-            {
-                return _config.BlacklistedUsers.Contains(username.Trim(), StringComparer.OrdinalIgnoreCase);
-            }
-        }
-
-        public async Task<bool> AddBlacklistedUserAsync(string username)
-        {
-            if (string.IsNullOrWhiteSpace(username))
-                return false;
-
-            username = username.Trim().ToLowerInvariant();
-
-            lock (_lock)
-            {
-                if (_config.BlacklistedUsers.Contains(username, StringComparer.OrdinalIgnoreCase))
-                    return false;
-
-                _config.BlacklistedUsers.Add(username);
-            }
-
-            await SaveConfigurationAsync();
-            UserAdded?.Invoke(this, username);
-            _logger.LogInformation("Added user '{Username}' to blacklist", username);
-            return true;
-        }
-
-        public async Task<bool> RemoveBlacklistedUserAsync(string username)
-        {
-            if (string.IsNullOrWhiteSpace(username))
-                return false;
-
-            username = username.Trim().ToLowerInvariant();
-
-            bool removed;
-            lock (_lock)
-            {
-                removed = _config.BlacklistedUsers.RemoveAll(u => 
-                    string.Equals(u, username, StringComparison.OrdinalIgnoreCase)) > 0;
-            }
-
-            if (removed)
-            {
-                await SaveConfigurationAsync();
-                UserRemoved?.Invoke(this, username);
-                _logger.LogInformation("Removed user '{Username}' from blacklist", username);
-                return true;
-            }
-
-            return false;
-        }
-
-        public List<string> GetBlacklistedUsers()
-        {
-            lock (_lock)
-            {
-                return [.. _config.BlacklistedUsers.OrderBy(u => u)];
-            }
-        }
-
-        public async Task ClearAllBlacklistedUsersAsync()
-        {
-            lock (_lock)
-            {
-                _config.BlacklistedUsers.Clear();
-            }
-
-            await SaveConfigurationAsync();
-            _logger.LogInformation("Cleared all blacklisted users");
-        }
-
-        #endregion
-
         #region Migration from Old Config Files
 
         private async Task MigrateFromOldConfigsAsync()
@@ -393,7 +361,7 @@ namespace MultiChatViewer
             await Task.WhenAll(migrationTasks);
 
             // Save the migrated configuration
-            if (_config.Channels.Count > 0 || _config.BlacklistedUsers.Count > 0)
+            if (_config.Channels.Count > 0)
             {
                 await SaveConfigurationAsync();
                 _logger.LogInformation("Migration completed successfully");
@@ -637,6 +605,130 @@ namespace MultiChatViewer
 
             await SaveConfigurationAsync();
             _logger.LogInformation("Updated ShowTimestamps setting: {ShowTimestamps}", showTimestamps);
+        }
+
+        #endregion
+
+        #region Configuration Validation
+
+        /// <summary>
+        /// Validates that the configuration file matches the in-memory configuration
+        /// </summary>
+        public async Task<bool> ValidateConfigurationFileAsync()
+        {
+            try
+            {
+                if (!File.Exists(_configFilePath))
+                {
+                    _logger.LogWarning("Configuration file does not exist for validation");
+                    return false;
+                }
+
+                var json = await File.ReadAllTextAsync(_configFilePath);
+                var fileConfig = JsonSerializer.Deserialize<AppConfiguration>(json);
+                
+                if (fileConfig == null)
+                {
+                    _logger.LogWarning("Could not deserialize configuration file for validation");
+                    return false;
+                }
+
+                lock (_lock)
+                {
+                    // Compare blacklisted users
+                    var memoryUsers = _config.BlacklistedUsers.OrderBy(u => u).ToList();
+                    var fileUsers = (fileConfig.BlacklistedUsers ?? []).OrderBy(u => u).ToList();
+                    
+                    if (!memoryUsers.SequenceEqual(fileUsers))
+                    {
+                        _logger.LogWarning("Blacklisted users mismatch between memory and file. Memory: [{MemoryUsers}], File: [{FileUsers}]",
+                            string.Join(", ", memoryUsers), string.Join(", ", fileUsers));
+                        return false;
+                    }
+                    
+                    _logger.LogDebug("Configuration validation successful: {Count} blacklisted users match", memoryUsers.Count);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating configuration file");
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Debugging and Force Save
+
+        /// <summary>
+        /// Forces an immediate save and verification of the configuration
+        /// </summary>
+        public async Task ForceSaveAndVerifyAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Force saving configuration...");
+                await SaveConfigurationAsync();
+                
+                // Reload from file to ensure consistency
+                var fileContent = await File.ReadAllTextAsync(_configFilePath);
+                var fileConfig = JsonSerializer.Deserialize<AppConfiguration>(fileContent);
+                
+                lock (_lock)
+                {
+                    var memoryCount = _config.BlacklistedUsers.Count;
+                    var fileCount = fileConfig?.BlacklistedUsers?.Count ?? 0;
+                    
+                    if (memoryCount != fileCount)
+                    {
+                        _logger.LogError("Configuration mismatch detected! Memory has {MemoryCount} users, file has {FileCount} users", 
+                            memoryCount, fileCount);
+                        
+                        _logger.LogInformation("Memory users: [{MemoryUsers}]", string.Join(", ", _config.BlacklistedUsers));
+                        _logger.LogInformation("File users: [{FileUsers}]", string.Join(", ", fileConfig?.BlacklistedUsers ?? []));
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Configuration verification successful: {Count} users in both memory and file", memoryCount);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during force save and verify");
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region Debugging and State Logging
+
+        /// <summary>
+        /// Debug method to output current configuration state
+        /// </summary>
+        public void DebugLogCurrentState()
+        {
+            lock (_lock)
+            {
+                _logger.LogInformation("=== Configuration State Debug ===");
+                _logger.LogInformation("Config file path: {Path}", _configFilePath);
+                _logger.LogInformation("Channels: {Count}", _config.Channels.Count);
+                _logger.LogInformation("Blacklisted users: {Count}", _config.BlacklistedUsers.Count);
+                
+                if (_config.BlacklistedUsers.Count > 0)
+                {
+                    _logger.LogInformation("Blacklisted users list: [{Users}]", string.Join(", ", _config.BlacklistedUsers));
+                }
+                else
+                {
+                    _logger.LogInformation("No blacklisted users in memory");
+                }
+                
+                _logger.LogInformation("Last saved: {LastSaved}", _config.LastSaved);
+                _logger.LogInformation("=== End Configuration State ===");
+            }
         }
 
         #endregion

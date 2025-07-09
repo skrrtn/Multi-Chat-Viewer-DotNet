@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -27,7 +28,9 @@ namespace MultiChatViewer
             BlacklistedUsersListBox.ItemsSource = _blacklistedUsers;
 
             // Load existing blacklisted users
-            LoadBlacklistedUsers();
+            _ = Task.Run(async () => {
+                await Dispatcher.InvokeAsync(LoadBlacklistedUsers);
+            });
 
             // Subscribe to service events
             _userFilterService.UserAdded += OnUserAdded;
@@ -39,11 +42,15 @@ namespace MultiChatViewer
             _logger.LogInformation("User Filters window opened");
         }
 
-        private void LoadBlacklistedUsers()
+        private async void LoadBlacklistedUsers()
         {
             try
             {
                 _blacklistedUsers.Clear();
+                
+                // Ensure the user filter service is initialized before getting users
+                await _userFilterService.InitializeAsync();
+                
                 var users = _userFilterService.GetBlacklistedUsers();
                 
                 foreach (var user in users)
@@ -84,12 +91,15 @@ namespace MultiChatViewer
                     StatusTextBlock.Text = "Please enter a username";
                     UsernameTextBox.Focus();
                     return;
-                }                // Remove @ symbol if present
+                }
+
+                // Remove @ symbol if present
                 if (username.StartsWith('@'))
                 {
                     username = username[1..];
                 }
 
+                _logger.LogInformation("User attempting to add '{Username}' to blacklist via UI", username);
                 var success = await _userFilterService.AddUserAsync(username);
                 
                 if (success)
@@ -97,31 +107,44 @@ namespace MultiChatViewer
                     StatusTextBlock.Text = $"Added '{username}' to blacklist";
                     UsernameTextBox.Clear();
                     UsernameTextBox.Focus();
+                    _logger.LogInformation("Successfully added '{Username}' to blacklist via UI", username);
                 }
                 else
                 {
                     StatusTextBlock.Text = $"'{username}' is already blacklisted";
+                    _logger.LogDebug("User '{Username}' was already blacklisted", username);
                 }
 
                 UpdateUI();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding user to blacklist");
-                StatusTextBlock.Text = "Error adding user to blacklist";
+                _logger.LogError(ex, "Error adding user to blacklist via UI: {ErrorType} - {ErrorMessage}", ex.GetType().Name, ex.Message);
+                StatusTextBlock.Text = $"Error adding user to blacklist: {ex.Message}";
+                
+                // Also log inner exception if present
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError("Inner exception: {InnerErrorType} - {InnerErrorMessage}", 
+                        ex.InnerException.GetType().Name, ex.InnerException.Message);
+                }
             }
         }
 
         private async void RemoveSelectedButton_Click(object sender, RoutedEventArgs e)
         {
             try
-            {                var selectedUsers = BlacklistedUsersListBox.SelectedItems.Cast<string>().ToList();
+            {
+                var selectedUsers = BlacklistedUsersListBox.SelectedItems.Cast<string>().ToList();
                 
                 if (selectedUsers.Count == 0)
                 {
                     StatusTextBlock.Text = "No users selected for removal";
                     return;
                 }
+
+                _logger.LogInformation("User attempting to remove {Count} users from blacklist via UI: {Users}", 
+                    selectedUsers.Count, string.Join(", ", selectedUsers));
 
                 var removedCount = 0;
                 foreach (var user in selectedUsers)
@@ -138,6 +161,7 @@ namespace MultiChatViewer
                     StatusTextBlock.Text = removedCount == 1 
                         ? $"Removed 1 user from blacklist"
                         : $"Removed {removedCount} users from blacklist";
+                    _logger.LogInformation("Successfully removed {Count} users from blacklist via UI", removedCount);
                 }
 
                 UpdateUI();

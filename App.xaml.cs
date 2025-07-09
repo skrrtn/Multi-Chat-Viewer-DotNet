@@ -74,6 +74,9 @@ namespace MultiChatViewer
             // Register the unified configuration service first
             services.AddSingleton<UnifiedConfigurationService>();
 
+            // Register the blacklist manager for dedicated blacklist file management
+            services.AddSingleton<BlacklistManager>();
+
             // Register chat clients
             services.AddSingleton<TwitchIrcClient>();
             // Note: KickChatClient is NOT registered as singleton - MultiChannelManager creates instances as needed
