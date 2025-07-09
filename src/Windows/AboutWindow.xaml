@@ -5,7 +5,7 @@
         Width="475"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
-        Icon="logo.ico">
+        Icon="../../Resources/logo.ico">
     
     <Grid Background="#1e1e1e">        <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -13,7 +13,7 @@
         </Grid.RowDefinitions>
           <!-- Header Section -->
         <StackPanel Grid.Row="0" Margin="20,15,20,0" HorizontalAlignment="Center">
-            <Image Source="logo.ico" Width="48" Height="48" Margin="0,0,0,10"/>
+            <Image Source="../../Resources/logo.ico" Width="48" Height="48" Margin="0,0,0,10"/>
             <TextBlock Text="Multi Chat Viewer" 
                        FontSize="22" 
                        FontWeight="Bold" 
