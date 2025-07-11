@@ -82,15 +82,15 @@ A native Windows application built with C# and WPF that connects to Twitch IRC a
 
 **No .NET Framework Required!**
 
-1. **Download the latest release** from the [Releases](../../releases) page
-2. **Extract the executable** (TwitchChatViewer.exe) to any folder on your computer
-3. **Double-click to run** - No installation or additional software needed!
+1. **Download the latest release** of 'MultiChatViewer.exe' from the [Releases](../../releases) page
+2. **Double-click to run** - No installation or additional software needed!
 
 The release executable is completely self-contained and includes all necessary dependencies. You don't need to install .NET Framework, .NET Runtime, or any other software.
 
 **System Requirements for Release:**
 - Windows 10/11 (64-bit)
-- ~165 MB of disk space
+- ~165 MB of disk space for the executable
+*(databases consume around 90-100 MB per 1 million messages saved)*
 
 ### Windows Security Warning
 
