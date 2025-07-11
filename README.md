@@ -43,8 +43,8 @@ A Windows app for viewing Twitch and Kick.com chat in real-time. No authenticati
 Need the latest changes or want to contribute?
 
 ```powershell
-git clone https://github.com/skrrtn/Twitch-Chat-Viewer-DotNet.git
-cd Twitch-Chat-Viewer-DotNet
+git clone https://github.com/skrrtn/Multi-Chat-Viewer-DotNet.git
+cd Multi-Chat-Viewer-DotNet
 dotnet restore
 dotnet build
 dotnet run
