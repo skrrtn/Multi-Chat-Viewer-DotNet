@@ -24,7 +24,6 @@ namespace MultiChatViewer
         private readonly ILogger<MainWindow> _logger;
         private readonly IServiceProvider _serviceProvider;
         private NotifyIcon _notifyIcon;
-        private bool _isActuallyClosing = false;
         private bool _isConnected;
         private string _statusMessage = "No followed channels";
         private string _currentChannel;
@@ -1293,7 +1292,6 @@ namespace MultiChatViewer
             try
             {
                 _logger.LogInformation("Application exit requested from menu");
-                _isActuallyClosing = true;
                 this.Close();
             }
             catch (Exception ex)
