@@ -20,6 +20,7 @@ namespace MultiChatViewer
         private double _chatFontSize = 12.0; // Default font size
         private bool _showTimestamps = true; // Default to showing timestamps (matches main window)
         private bool _timestampExplicitlySet = false; // Track if timestamp was explicitly set in constructor
+        private bool _reverseChatDirectionExplicitlySet = false; // Track if reverse chat direction was explicitly set in constructor
         private bool _scrollToTopButtonVisible = false;
         private bool _isAutoScrollEnabled = true;
         private ScrollViewer _mentionsScrollViewer;
@@ -28,6 +29,8 @@ namespace MultiChatViewer
         
         // Performance management
         private const int MAX_MENTIONS_IN_CHAT = 500;
+
+        private bool _reverseChatDirection = false; // Default to newest messages at top
 
         public ObservableCollection<ChatMessage> MentionMessages { get; } = [];
 
@@ -89,6 +92,25 @@ namespace MultiChatViewer
             }
         }
 
+        public bool ReverseChatDirection
+        {
+            get => _reverseChatDirection;
+            set
+            {
+                _reverseChatDirection = value;
+                OnPropertyChanged(nameof(ReverseChatDirection));
+                
+                // Do NOT save to configuration - the main window is the source of truth
+                // The StreamerMentionsWindow should only read from configuration, not write to it
+                
+                // Refresh mentions to apply new direction
+                RefreshMentionsDirection();
+                
+                // Update scroll button text
+                UpdateScrollButtonText();
+            }
+        }
+
         private ScrollViewer MentionsScrollViewer 
         { 
             get 
@@ -104,7 +126,9 @@ namespace MultiChatViewer
             } 
         }
 
-        public StreamerMentionsWindow(IServiceProvider serviceProvider, string channelName = null, bool? showTimestamps = null)
+        private string _scrollButtonText = "📄 Scroll to Top"; // Default scroll button text
+
+        public StreamerMentionsWindow(IServiceProvider serviceProvider, string channelName = null, bool? showTimestamps = null, bool? reverseChatDirection = null)
         {
             InitializeComponent();
             
@@ -122,8 +146,15 @@ namespace MultiChatViewer
                 _showTimestamps = showTimestamps.Value;
                 _timestampExplicitlySet = true;
             }
+            
+            // If reverseChatDirection is provided, use it immediately before loading other settings
+            if (reverseChatDirection.HasValue)
+            {
+                _reverseChatDirection = reverseChatDirection.Value;
+                _reverseChatDirectionExplicitlySet = true;
+            }
 
-            // Load settings from configuration (this will NOT override the timestamp setting if already set)
+            // Load settings from configuration (this will NOT override explicitly set settings)
             LoadSettings();
 
             // Subscribe to message events
@@ -169,6 +200,15 @@ namespace MultiChatViewer
                     {
                         ShowTimestamps = configService.GetShowTimestamps();
                     }
+                    
+                    // Only load reverse chat direction setting from config if it wasn't explicitly set in constructor
+                    if (!_reverseChatDirectionExplicitlySet)
+                    {
+                        ReverseChatDirection = configService.GetReverseChatDirection();
+                    }
+                    
+                    // Always update scroll button text based on current setting
+                    UpdateScrollButtonText();
                 }
             }
             catch (Exception)
@@ -200,22 +240,8 @@ namespace MultiChatViewer
                     
                     if (_isAutoScrollEnabled)
                     {
-                        // Add to the top of the list (most recent first)
-                        MentionMessages.Insert(0, args.Message);
-                        
-                        // Maintain message limit for performance
-                        if (MentionMessages.Count > MAX_MENTIONS_IN_CHAT)
-                        {
-                            var messagesToRemove = MentionMessages.Count - MAX_MENTIONS_IN_CHAT;
-                            for (int i = 0; i < messagesToRemove; i++)
-                            {
-                                MentionMessages.RemoveAt(MentionMessages.Count - 1);
-                            }
-                        }
-
-                        // Auto-scroll to top to show latest mention
-                        var scrollViewer = MentionsScrollViewer;
-                        scrollViewer?.ScrollToTop();
+                        // Add using helper method that respects direction
+                        AddMentionMessage(args.Message);
                     }
                     else
                     {
@@ -307,11 +333,27 @@ namespace MultiChatViewer
         {
             if (sender is ScrollViewer scrollViewer)
             {
-                // Show scroll to top button when not at the top
-                ScrollToTopButtonVisible = scrollViewer.VerticalOffset > 100;
+                // Check scroll position based on chat direction
+                const double scrollThreshold = 100.0;
+                bool isAtNewMessagePosition;
                 
-                // Enable auto-scroll when user scrolls to top
-                if (scrollViewer.VerticalOffset == 0)
+                if (_reverseChatDirection)
+                {
+                    // Reverse direction: check if at bottom
+                    double maxScroll = scrollViewer.ScrollableHeight;
+                    isAtNewMessagePosition = (maxScroll - scrollViewer.VerticalOffset) <= scrollThreshold;
+                }
+                else
+                {
+                    // Normal direction: check if at top
+                    isAtNewMessagePosition = scrollViewer.VerticalOffset <= scrollThreshold;
+                }
+
+                // Show scroll button when not at new message position
+                ScrollToTopButtonVisible = !isAtNewMessagePosition;
+                
+                // Enable auto-scroll when user scrolls to new message position
+                if (isAtNewMessagePosition)
                 {
                     // Process pending mentions and re-enable auto-scroll
                     ProcessPendingMentions();
@@ -581,35 +623,150 @@ namespace MultiChatViewer
         {
             if (_pendingMentions.Count == 0) return;
 
-            // Insert all pending mentions at the top in the correct order
+            // Get all pending mentions
             var mentionsToAdd = new List<ChatMessage>();
             while (_pendingMentions.Count > 0)
             {
                 mentionsToAdd.Add(_pendingMentions.Dequeue());
             }
 
-            // Insert mentions in reverse order so newest appears at top
-            for (int i = mentionsToAdd.Count - 1; i >= 0; i--)
+            // Add each mention using the helper method that respects direction
+            foreach (var mention in mentionsToAdd)
             {
-                MentionMessages.Insert(0, mentionsToAdd[i]);
+                AddMentionMessage(mention);
             }
 
             // Reset pending count
             PendingMentionCount = 0;
 
-            // Maintain message limit for performance
-            if (MentionMessages.Count > MAX_MENTIONS_IN_CHAT)
-            {
-                var messagesToRemove = MentionMessages.Count - MAX_MENTIONS_IN_CHAT;
-                for (int i = 0; i < messagesToRemove; i++)
-                {
-                    MentionMessages.RemoveAt(MentionMessages.Count - 1);
-                }
-            }
-
             // Update mention count and visibility
             OnPropertyChanged(nameof(MentionCount));
             UpdateNoMentionsVisibility();
+        }
+
+        private void RefreshMentionsDirection()
+        {
+            try
+            {
+                // Store current mentions
+                var currentMentions = MentionMessages.ToList();
+                
+                // Clear and re-add mentions in the correct order
+                MentionMessages.Clear();
+                
+                if (_reverseChatDirection)
+                {
+                    // Reverse direction: oldest first, newest at bottom
+                    var sortedMentions = currentMentions.OrderBy(m => m.Timestamp).ToList();
+                    foreach (var mention in sortedMentions)
+                    {
+                        MentionMessages.Add(mention);
+                    }
+                }
+                else
+                {
+                    // Normal direction: newest first, newest at top
+                    var sortedMentions = currentMentions.OrderByDescending(m => m.Timestamp).ToList();
+                    foreach (var mention in sortedMentions)
+                    {
+                        MentionMessages.Add(mention);
+                    }
+                }
+                
+                // Scroll to the appropriate position
+                ScrollToAppropriateMentionPosition();
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't crash the application
+                System.Diagnostics.Debug.WriteLine($"Error refreshing mentions direction: {ex.Message}");
+            }
+        }
+
+        private void AddMentionMessage(ChatMessage message)
+        {
+            try
+            {
+                if (_reverseChatDirection)
+                {
+                    // Reverse direction: add at bottom (newest messages at bottom)
+                    MentionMessages.Add(message);
+                }
+                else
+                {
+                    // Normal direction: add at top (newest messages at top)
+                    MentionMessages.Insert(0, message);
+                }
+                
+                // Maintain message limit
+                while (MentionMessages.Count > MAX_MENTIONS_IN_CHAT)
+                {
+                    if (_reverseChatDirection)
+                    {
+                        // Remove oldest (from beginning)
+                        MentionMessages.RemoveAt(0);
+                    }
+                    else
+                    {
+                        // Remove oldest (from end)
+                        MentionMessages.RemoveAt(MentionMessages.Count - 1);
+                    }
+                }
+                
+                // Auto-scroll if enabled
+                if (_isAutoScrollEnabled)
+                {
+                    ScrollToAppropriateMentionPosition();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error adding mention message: {ex.Message}");
+            }
+        }
+
+        private void ScrollToAppropriateMentionPosition()
+        {
+            try
+            {
+                var scrollViewer = MentionsScrollViewer;
+                if (scrollViewer == null) return;
+                
+                if (_reverseChatDirection)
+                {
+                    // Reverse direction: scroll to bottom for newest messages
+                    scrollViewer.ScrollToEnd();
+                }
+                else
+                {
+                    // Normal direction: scroll to top for newest messages
+                    scrollViewer.ScrollToTop();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error scrolling to appropriate mention position: {ex.Message}");
+            }
+        }
+
+        public void UpdateReverseChatDirection(bool reverseChatDirection)
+        {
+            ReverseChatDirection = reverseChatDirection;
+        }
+
+        public string ScrollButtonText
+        {
+            get => _scrollButtonText;
+            set
+            {
+                _scrollButtonText = value;
+                OnPropertyChanged(nameof(ScrollButtonText));
+            }
+        }
+
+        private void UpdateScrollButtonText()
+        {
+            ScrollButtonText = _reverseChatDirection ? "📄 Scroll to Bottom" : "📄 Scroll to Top";
         }
     }
 }

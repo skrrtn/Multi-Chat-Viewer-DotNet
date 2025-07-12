@@ -32,6 +32,7 @@ namespace MultiChatViewer
         private int _currentChannelMessageCount;        private string _currentChannelDatabaseSize = "0 B";
         private double _chatFontSize = 12.0; // Default font size matches BaseFontSize
         private bool _showTimestamps = true; // Default to showing timestamps
+        private string _scrollButtonText = "📄 Scroll to Top"; // Default scroll button text
         private readonly System.Windows.Threading.DispatcherTimer _statusUpdateTimer = new();
         
         // Streamer Mentions window singleton
@@ -156,6 +157,16 @@ namespace MultiChatViewer
             }
         }
 
+        public string ScrollButtonText
+        {
+            get => _scrollButtonText;
+            set
+            {
+                _scrollButtonText = value;
+                OnPropertyChanged(nameof(ScrollButtonText));
+            }
+        }
+
         // Loading state properties
         private bool _isLoading = true;
         private string _loadingMessage = "Loading databases...";
@@ -188,7 +199,37 @@ namespace MultiChatViewer
                 _loadingMessage = value;
                 OnPropertyChanged(nameof(LoadingMessage));
             }
-        }        public MainWindow(TwitchIrcClient twitchClient, ChatDatabaseService databaseService, 
+        }        private bool _reverseChatDirection = false; // Default to newest messages at top
+
+        public bool ReverseChatDirection
+        {
+            get => _reverseChatDirection;
+            set
+            {
+                _reverseChatDirection = value;
+                OnPropertyChanged(nameof(ReverseChatDirection));
+                
+                // Save the setting to configuration
+                var configService = _serviceProvider.GetService<UnifiedConfigurationService>();
+                if (configService != null)
+                {
+                    _ = Task.Run(async () => await configService.SetReverseChatDirectionAsync(value));
+                }
+                
+                // Update the StreamerMentionsWindow if it's open
+                if (_streamerMentionsWindow != null && _isStreamerMentionsWindowOpen)
+                {
+                    _streamerMentionsWindow.UpdateReverseChatDirection(value);
+                }
+                
+                // Refresh chat messages to apply new direction
+                RefreshChatDirection();
+                
+                // Update scroll button text
+                UpdateScrollButtonText();
+            }
+        }
+        public MainWindow(TwitchIrcClient twitchClient, ChatDatabaseService databaseService, 
                           MultiChannelManager multiChannelManager, UserFilterService userFilterService,
                           IServiceProvider serviceProvider, ILogger<MainWindow> logger)
         {
@@ -588,7 +629,7 @@ namespace MultiChatViewer
                         IsSystemMessage = true
                     };
                     MessageParser.ParseChatMessage(systemMessage);
-                    ChatMessages.Insert(0, systemMessage);
+                    AddChatMessage(systemMessage);
                 });
 
                 _logger.LogInformation("Refreshed chat with {Count} messages from database for channel: {Channel}", 
@@ -691,24 +732,8 @@ namespace MultiChatViewer
                 }
                 else if (_isAutoScrollEnabled)
                 {
-                    // Auto-scroll is enabled, add message normally to the top
-                    ChatMessages.Insert(0, message);
-                    
-                    // Maintain message limit for performance
-                    if (ChatMessages.Count > MAX_MESSAGES_IN_CHAT)
-                    {
-                        // Remove oldest messages (from the end)
-                        var messagesToRemove = ChatMessages.Count - MAX_MESSAGES_IN_CHAT;
-                        for (int i = 0; i < messagesToRemove; i++)
-                        {
-                            ChatMessages.RemoveAt(ChatMessages.Count - 1);
-                        }                        _logger.LogDebug("Trimmed {Count} old messages to maintain {MaxMessages} message limit", 
-                            messagesToRemove, MAX_MESSAGES_IN_CHAT);
-                    }
-
-                    // Auto-scroll to top
-                    var scrollViewer = ChatScrollViewer;
-                    scrollViewer?.ScrollToTop();
+                    // Auto-scroll is enabled, add message using helper method
+                    AddChatMessage(message);
                 }
                 else
                 {
@@ -783,6 +808,13 @@ namespace MultiChatViewer
                     _showTimestamps = configService.GetShowTimestamps();
                     OnPropertyChanged(nameof(ShowTimestamps));
                     _logger.LogDebug("Loaded ShowTimestamps setting: {ShowTimestamps}", _showTimestamps);
+                    
+                    _reverseChatDirection = configService.GetReverseChatDirection();
+                    OnPropertyChanged(nameof(ReverseChatDirection));
+                    _logger.LogDebug("Loaded ReverseChatDirection setting: {ReverseChatDirection}", _reverseChatDirection);
+                    
+                    // Update scroll button text based on loaded setting
+                    UpdateScrollButtonText();
                 }
                 
                 LoadingMessage = "Connecting channels...";
@@ -824,7 +856,7 @@ namespace MultiChatViewer
                         IsSystemMessage = true
                     };
                     MessageParser.ParseChatMessage(welcomeMessage);
-                    ChatMessages.Insert(0, welcomeMessage);
+                    AddChatMessage(welcomeMessage);
                 }
                 
                 // Loading complete - enable user interface
@@ -944,24 +976,49 @@ namespace MultiChatViewer
 
         private void InsertMessageInOrder(ChatMessage message)
         {
-            // Find the correct position to insert the message to maintain chronological order
-            var insertIndex = 0;
-            for (int i = 0; i < ChatMessages.Count; i++)
+            if (_reverseChatDirection)
             {
-                if (ChatMessages[i].Timestamp <= message.Timestamp)
+                // Reverse direction: find position to maintain chronological order (oldest to newest)
+                var insertIndex = ChatMessages.Count; // Default to end
+                for (int i = 0; i < ChatMessages.Count; i++)
                 {
-                    insertIndex = i;
-                    break;
+                    if (ChatMessages[i].Timestamp > message.Timestamp)
+                    {
+                        insertIndex = i;
+                        break;
+                    }
                 }
-                insertIndex = i + 1;
+                ChatMessages.Insert(insertIndex, message);
             }
-            
-            ChatMessages.Insert(insertIndex, message);
+            else
+            {
+                // Normal direction: find position to maintain reverse chronological order (newest to oldest)
+                var insertIndex = 0;
+                for (int i = 0; i < ChatMessages.Count; i++)
+                {
+                    if (ChatMessages[i].Timestamp <= message.Timestamp)
+                    {
+                        insertIndex = i;
+                        break;
+                    }
+                    insertIndex = i + 1;
+                }
+                ChatMessages.Insert(insertIndex, message);
+            }
             
             // Maintain the message limit
             while (ChatMessages.Count > MAX_MESSAGES_IN_CHAT)
             {
-                ChatMessages.RemoveAt(ChatMessages.Count - 1);
+                if (_reverseChatDirection)
+                {
+                    // Remove oldest (from beginning)
+                    ChatMessages.RemoveAt(0);
+                }
+                else
+                {
+                    // Remove oldest (from end)
+                    ChatMessages.RemoveAt(ChatMessages.Count - 1);
+                }
             }
         }
 
@@ -1049,110 +1106,7 @@ namespace MultiChatViewer
             }
         }
 
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-            
-            string[] sizes = ["B", "KB", "MB", "GB", "TB"];
-            int order = 0;
-            double size = bytes;
-            
-            while (size >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                size /= 1024;
-            }
-            
-            return $"{size:0.##} {sizes[order]}";
-        }
-
-        private void UpdateWindowTitle()
-        {
-            // Safety check - ensure _multiChannelManager is initialized
-            if (_multiChannelManager == null)
-            {
-                Title = "Multi-Platform Chat Viewer";
-                return;
-            }
-            
-            var enabledChannels = _multiChannelManager.GetFollowedChannels().Where(c => c.ViewingEnabled).ToList();
-            
-            if (enabledChannels.Count == 0)
-            {
-                Title = "Multi-Platform Chat Viewer";
-            }
-            else if (enabledChannels.Count == 1)
-            {
-                var channel = enabledChannels.First();
-                Title = $"Multi-Platform Chat Viewer - {channel.PlatformName} #{channel.Name}";
-            }
-            else
-            {
-                Title = $"Multi-Platform Chat Viewer - {enabledChannels.Count} Channels";
-            }
-        }        protected override void OnClosing(CancelEventArgs e)
-        {
-            if (!_isActuallyClosing)
-            {
-                // Minimize to tray instead of closing
-                e.Cancel = true;
-                if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
-                {
-                    HideToTray();
-                }
-                return;
-            }            // Actually closing the application
-            try
-            {
-                // Stop the timers
-                _statusUpdateTimer?.Stop();
-                _resizeTimer?.Stop();
-                
-                // Close streamer mentions window if open
-                if (_streamerMentionsWindow != null && _isStreamerMentionsWindowOpen)
-                {
-                    _streamerMentionsWindow.Closed -= StreamerMentionsWindow_Closed;
-                    _streamerMentionsWindow.Close();
-                    _streamerMentionsWindow = null;
-                    IsStreamerMentionsWindowOpen = false;
-                }
-                
-                // Unsubscribe from events
-                _multiChannelManager.ChannelConnected -= OnChannelConnected;
-                _multiChannelManager.ChannelDisconnected -= OnChannelDisconnected;
-                _multiChannelManager.ChannelRemoved -= OnChannelRemoved;
-                _multiChannelManager.MessageReceived -= OnBackgroundMessageReceived;
-                
-                // Dispose system tray icon
-                if (OperatingSystem.IsWindowsVersionAtLeast(6, 1) && _notifyIcon != null)
-                {
-                    _notifyIcon.Visible = false;
-                    _notifyIcon.Dispose();
-                    _notifyIcon = null;
-                }
-                
-                if (IsConnected)
-                {
-                    _twitchClient.DisconnectAsync().Wait(TimeSpan.FromSeconds(2));
-                }
-                _databaseService.CloseConnectionAsync().Wait(TimeSpan.FromSeconds(2));
-                
-                _logger.LogInformation("Application closing properly");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during application shutdown");
-            }
-            
-            base.OnClosing(e);
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }        private async Task LoadRecentMessagesAsync()
+        private async Task LoadRecentMessagesAsync()
         {
             try
             {
@@ -1229,22 +1183,8 @@ namespace MultiChatViewer
                     }
                     else if (_isAutoScrollEnabled)
                     {
-                        // Auto-scroll is enabled, add message normally to the top
-                        ChatMessages.Insert(0, args.Message);
-                        
-                        // Maintain message limit for performance
-                        if (ChatMessages.Count > MAX_MESSAGES_IN_CHAT)
-                        {
-                            // Remove oldest messages (from the end)
-                            var messagesToRemove = ChatMessages.Count - MAX_MESSAGES_IN_CHAT;
-                            for (int i = 0; i < messagesToRemove; i++)
-                            {
-                                ChatMessages.RemoveAt(ChatMessages.Count - 1);
-                            }
-                            _logger.LogDebug("Trimmed {Count} old messages to maintain {MaxMessages} message limit", 
-                                messagesToRemove, MAX_MESSAGES_IN_CHAT);                        }                        // Auto-scroll to top
-                        var scrollViewer = ChatScrollViewer;
-                        scrollViewer?.ScrollToTop();
+                        // Auto-scroll is enabled, add message using helper method
+                        AddChatMessage(args.Message);
                     }
                     else
                     {
@@ -1361,38 +1301,51 @@ namespace MultiChatViewer
                 _logger.LogError(ex, "Error during application exit");
             }
         }        private void ChatScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
-        {            if (sender is not ScrollViewer scrollViewer) return;
+        {            
+            if (sender is not ScrollViewer scrollViewer) return;
 
-            // Check if user has scrolled away from the top - use more sensitive threshold
-            const double scrollThreshold = 1.0; // Very sensitive - any scroll away from top
-            bool isAtTop = scrollViewer.VerticalOffset <= scrollThreshold;
-
-            if (!isAtTop && _isAutoScrollEnabled)
+            // Check scroll position based on chat direction
+            const double scrollThreshold = 1.0; // Very sensitive threshold
+            bool isAtNewMessagePosition;
+            
+            if (_reverseChatDirection)
             {
-                // User scrolled away from top, disable auto-scroll and show button
+                // Reverse direction: check if at bottom
+                double maxScroll = scrollViewer.ScrollableHeight;
+                isAtNewMessagePosition = (maxScroll - scrollViewer.VerticalOffset) <= scrollThreshold;
+            }
+            else
+            {
+                // Normal direction: check if at top
+                isAtNewMessagePosition = scrollViewer.VerticalOffset <= scrollThreshold;
+            }
+
+            if (!isAtNewMessagePosition && _isAutoScrollEnabled)
+            {
+                // User scrolled away from new message position, disable auto-scroll and show button
                 _isAutoScrollEnabled = false;
                 ScrollToTopButtonVisible = true;
                 _logger.LogDebug("Auto-scroll disabled, user scrolled to position: {Position}", scrollViewer.VerticalOffset);
             }
-            else if (isAtTop && !_isAutoScrollEnabled)
+            else if (isAtNewMessagePosition && !_isAutoScrollEnabled)
             {
-                // User scrolled back to top, re-enable auto-scroll and process pending messages
+                // User scrolled back to new message position, re-enable auto-scroll and process pending messages
                 ProcessPendingMessages();
                 _isAutoScrollEnabled = true;
                 ScrollToTopButtonVisible = false;
-                _logger.LogDebug("Auto-scroll re-enabled, user scrolled back to top");
+                _logger.LogDebug("Auto-scroll re-enabled, user scrolled back to new message position");
             }
-        }private void ScrollToTopButton_Click(object sender, RoutedEventArgs e)
+        }        private void ScrollToTopButton_Click(object sender, RoutedEventArgs e)
         {
             var scrollViewer = ChatScrollViewer;
             if (scrollViewer != null)
             {
                 // Process pending messages first, then scroll
                 ProcessPendingMessages();
-                scrollViewer.ScrollToTop();
+                ScrollToAppropriatePosition();
                 _isAutoScrollEnabled = true;
                 ScrollToTopButtonVisible = false;
-                _logger.LogDebug("Scroll-to-top button clicked, auto-scroll re-enabled");
+                _logger.LogDebug("Scroll button clicked, auto-scroll re-enabled");
             }
         }
 
@@ -1402,34 +1355,23 @@ namespace MultiChatViewer
 
             _logger.LogInformation("Processing {Count} pending messages", _pendingMessages.Count);
 
-            // Insert all pending messages at the top in the correct order
+            // Get all pending messages
             var messagesToAdd = new List<ChatMessage>();
             while (_pendingMessages.Count > 0)
             {
                 messagesToAdd.Add(_pendingMessages.Dequeue());
             }
 
-            // Insert messages in reverse order so newest appears at top
-            for (int i = messagesToAdd.Count - 1; i >= 0; i--)
+            // Add each message using the helper method that respects direction
+            // Process in chronological order so they appear in correct sequence
+            messagesToAdd.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+            foreach (var message in messagesToAdd)
             {
-                ChatMessages.Insert(0, messagesToAdd[i]);
+                AddChatMessage(message);
             }
 
             // Reset pending count
             PendingMessageCount = 0;
-
-            // Maintain message limit for performance
-            if (ChatMessages.Count > MAX_MESSAGES_IN_CHAT)
-            {
-                // Remove oldest messages (from the end)
-                var messagesToRemove = ChatMessages.Count - MAX_MESSAGES_IN_CHAT;
-                for (int i = 0; i < messagesToRemove; i++)
-                {
-                    ChatMessages.RemoveAt(ChatMessages.Count - 1);
-                }
-                _logger.LogDebug("Trimmed {Count} old messages to maintain {MaxMessages} message limit after processing pending messages", 
-                    messagesToRemove, MAX_MESSAGES_IN_CHAT);
-            }
 
             _logger.LogInformation("Processed {Count} pending messages", messagesToAdd.Count);
         }        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -1686,8 +1628,8 @@ namespace MultiChatViewer
                     
                     if (shouldBeOpen && (_streamerMentionsWindow == null || !_isStreamerMentionsWindowOpen))
                     {
-                        // Create and show the Streamer Mentions window with current timestamp setting
-                        _streamerMentionsWindow = new StreamerMentionsWindow(_serviceProvider, null, ShowTimestamps);
+                        // Create and show the Streamer Mentions window with current settings
+                        _streamerMentionsWindow = new StreamerMentionsWindow(_serviceProvider, null, ShowTimestamps, ReverseChatDirection);
                         
                         // Subscribe to the Closed event to update our state
                         _streamerMentionsWindow.Closed += StreamerMentionsWindow_Closed;
@@ -1735,6 +1677,153 @@ namespace MultiChatViewer
             }
             
             _logger.LogInformation("Streamer Mentions window closed");
+        }
+
+        private void RefreshChatDirection()
+        {
+            try
+            {
+                // Store current messages
+                var currentMessages = ChatMessages.ToList();
+                
+                // Clear and re-add messages in the correct order
+                ChatMessages.Clear();
+                
+                if (_reverseChatDirection)
+                {
+                    // Reverse direction: oldest first, newest at bottom
+                    var sortedMessages = currentMessages.OrderBy(m => m.Timestamp).ToList();
+                    foreach (var message in sortedMessages)
+                    {
+                        ChatMessages.Add(message);
+                    }
+                }
+                else
+                {
+                    // Normal direction: newest first, newest at top
+                    var sortedMessages = currentMessages.OrderByDescending(m => m.Timestamp).ToList();
+                    foreach (var message in sortedMessages)
+                    {
+                        ChatMessages.Add(message);
+                    }
+                }
+                
+                // Scroll to the appropriate position
+                ScrollToAppropriatePosition();
+                
+                _logger.LogInformation("Refreshed chat direction. Reverse: {IsReverse}, Messages: {Count}", 
+                    _reverseChatDirection, ChatMessages.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing chat direction");
+            }
+        }
+
+        private void AddChatMessage(ChatMessage message)
+        {
+            try
+            {
+                if (_reverseChatDirection)
+                {
+                    // Reverse direction: add at bottom (newest messages at bottom)
+                    ChatMessages.Add(message);
+                }
+                else
+                {
+                    // Normal direction: add at top (newest messages at top)
+                    ChatMessages.Insert(0, message);
+                }
+                
+                // Maintain message limit
+                while (ChatMessages.Count > MAX_MESSAGES_IN_CHAT)
+                {
+                    if (_reverseChatDirection)
+                    {
+                        // Remove oldest (from beginning)
+                        ChatMessages.RemoveAt(0);
+                    }
+                    else
+                    {
+                        // Remove oldest (from end)
+                        ChatMessages.RemoveAt(ChatMessages.Count - 1);
+                    }
+                }
+                
+                // Auto-scroll if enabled
+                if (_isAutoScrollEnabled)
+                {
+                    ScrollToAppropriatePosition();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding chat message");
+            }
+        }
+
+        private void ScrollToAppropriatePosition()
+        {
+            try
+            {
+                var scrollViewer = ChatScrollViewer;
+                if (scrollViewer == null) return;
+                
+                if (_reverseChatDirection)
+                {
+                    // Reverse direction: scroll to bottom for newest messages
+                    scrollViewer.ScrollToEnd();
+                }
+                else
+                {
+                    // Normal direction: scroll to top for newest messages
+                    scrollViewer.ScrollToTop();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error scrolling to appropriate position");
+            }
+        }
+
+        private void ReverseChatDirectionMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            // The ReverseChatDirection property setter will handle saving to configuration and refreshing
+            _logger.LogDebug("Reverse chat direction toggled via menu: {ReverseChatDirection}", ReverseChatDirection);
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void UpdateScrollButtonText()
+        {
+            ScrollButtonText = _reverseChatDirection ? "📄 Scroll to Bottom" : "📄 Scroll to Top";
+        }
+
+        private void UpdateWindowTitle()
+        {
+            // Simple implementation - can be enhanced later if needed
+            Title = "Multi-Platform Chat Viewer";
+        }
+
+        private static string FormatFileSize(long bytes)
+        {
+            if (bytes == 0) return "0 B";
+            
+            string[] sizes = ["B", "KB", "MB", "GB", "TB"];
+            int order = 0;
+            double size = bytes;
+            while (size >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                size /= 1024;
+            }
+            
+            return $"{size:0.##} {sizes[order]}";
         }
     }
 }

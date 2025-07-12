@@ -16,6 +16,7 @@ namespace MultiChatViewer
         
         // UI Settings
         public bool ShowTimestamps { get; set; } = true; // Default to showing timestamps
+        public bool ReverseChatDirection { get; set; } = false; // Default to newest messages at top
         
         // Kick credentials (encrypted)
         public string KickClientId { get; set; } = string.Empty;
@@ -577,6 +578,25 @@ namespace MultiChatViewer
 
             await SaveConfigurationAsync();
             _logger.LogInformation("Updated ShowTimestamps setting: {ShowTimestamps}", showTimestamps);
+        }
+
+        public bool GetReverseChatDirection()
+        {
+            lock (_lock)
+            {
+                return _config.ReverseChatDirection;
+            }
+        }
+
+        public async Task SetReverseChatDirectionAsync(bool reverseChatDirection)
+        {
+            lock (_lock)
+            {
+                _config.ReverseChatDirection = reverseChatDirection;
+            }
+
+            await SaveConfigurationAsync();
+            _logger.LogInformation("Updated ReverseChatDirection setting: {ReverseChatDirection}", reverseChatDirection);
         }
 
         #endregion

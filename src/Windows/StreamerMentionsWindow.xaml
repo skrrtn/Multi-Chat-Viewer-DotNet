@@ -297,7 +297,7 @@
                     Cursor="Hand">
                 <Button.Content>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="📄 Scroll to Top"/>
+                        <TextBlock Text="{Binding ScrollButtonText}"/>
                         <TextBlock Text=" (" Margin="5,0,0,0"/>
                         <TextBlock Text="{Binding PendingMentionCount}"/>
                         <TextBlock Text=" new mentions)"/>
