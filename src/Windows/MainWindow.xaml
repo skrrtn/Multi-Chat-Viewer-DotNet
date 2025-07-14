@@ -159,6 +159,7 @@
                     SourcePlatform="{Binding SourcePlatform}"
                     SourceChannel="{Binding SourceChannel}"
                     ShowTimestamp="{Binding DataContext.ShowTimestamps, RelativeSource={RelativeSource AncestorType=Window}}"
+                    ShowEmotes="{Binding DataContext.ShowEmotes, RelativeSource={RelativeSource AncestorType=Window}}"
                     VerticalAlignment="Top"
                     UsernameClick="HighlightedTextBlock_UsernameClick"
                     MentionClick="HighlightedTextBlock_MentionClick"/>
@@ -311,6 +312,7 @@
                     <MenuItem Header="+200%" Click="FontScale200_Click"/>                </MenuItem>
                 <Separator/>
                 <MenuItem Header="Show _Timestamps" IsCheckable="True" IsChecked="{Binding ShowTimestamps}" Click="ShowTimestampsMenuItem_Click"/>
+                <MenuItem Header="Show _Emotes" IsCheckable="True" IsChecked="{Binding ShowEmotes}" Click="ShowEmotesMenuItem_Click"/>
                 <MenuItem Header="_Reverse Chat Direction" IsCheckable="True" IsChecked="{Binding ReverseChatDirection}" Click="ReverseChatDirectionMenuItem_Click"/>
                 <Separator/>
                 <MenuItem Header="_Streamer Mentions" IsCheckable="True" IsChecked="{Binding IsStreamerMentionsWindowOpen}" Click="StreamerMentionsMenuItem_Click"/>

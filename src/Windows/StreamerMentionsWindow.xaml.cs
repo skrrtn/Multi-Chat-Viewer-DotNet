@@ -19,6 +19,7 @@ namespace MultiChatViewer
         private string _currentChannelName;
         private double _chatFontSize = 12.0; // Default font size
         private bool _showTimestamps = true; // Default to showing timestamps (matches main window)
+        private bool _showEmotes = true; // Default to showing emotes (matches main window)
         private bool _timestampExplicitlySet = false; // Track if timestamp was explicitly set in constructor
         private bool _reverseChatDirectionExplicitlySet = false; // Track if reverse chat direction was explicitly set in constructor
         private bool _scrollToTopButtonVisible = false;
@@ -64,6 +65,19 @@ namespace MultiChatViewer
             {
                 _showTimestamps = value;
                 OnPropertyChanged(nameof(ShowTimestamps));
+                
+                // Do NOT save to configuration - the main window is the source of truth
+                // The StreamerMentionsWindow should only read from configuration, not write to it
+            }
+        }
+
+        public bool ShowEmotes
+        {
+            get => _showEmotes;
+            set
+            {
+                _showEmotes = value;
+                OnPropertyChanged(nameof(ShowEmotes));
                 
                 // Do NOT save to configuration - the main window is the source of truth
                 // The StreamerMentionsWindow should only read from configuration, not write to it
@@ -200,6 +214,9 @@ namespace MultiChatViewer
                     {
                         ShowTimestamps = configService.GetShowTimestamps();
                     }
+                    
+                    // Always load emotes setting from config (no explicit setting support for this yet)
+                    ShowEmotes = configService.GetShowEmotes();
                     
                     // Only load reverse chat direction setting from config if it wasn't explicitly set in constructor
                     if (!_reverseChatDirectionExplicitlySet)
@@ -617,6 +634,16 @@ namespace MultiChatViewer
         {
             _showTimestamps = showTimestamps;
             OnPropertyChanged(nameof(ShowTimestamps));
+        }
+
+        /// <summary>
+        /// Updates the emotes setting to match the main window's setting
+        /// This should be called by the MainWindow when the emotes setting changes
+        /// </summary>
+        public void UpdateEmotesSetting(bool showEmotes)
+        {
+            _showEmotes = showEmotes;
+            OnPropertyChanged(nameof(ShowEmotes));
         }
 
         private void ProcessPendingMentions()

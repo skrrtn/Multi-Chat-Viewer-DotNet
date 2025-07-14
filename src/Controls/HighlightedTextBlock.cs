@@ -39,7 +39,11 @@ namespace MultiChatViewer
 
         public static readonly DependencyProperty ShowTimestampProperty =
             DependencyProperty.Register(nameof(ShowTimestamp), typeof(bool), typeof(HighlightedTextBlock),
-                new PropertyMetadata(true, OnShowTimestampChanged));        // Event for username clicks
+                new PropertyMetadata(true, OnShowTimestampChanged));
+
+        public static readonly DependencyProperty ShowEmotesProperty =
+            DependencyProperty.Register(nameof(ShowEmotes), typeof(bool), typeof(HighlightedTextBlock),
+                new PropertyMetadata(true, OnShowEmotesChanged));        // Event for username clicks
         public static readonly RoutedEvent UsernameClickEvent = 
             EventManager.RegisterRoutedEvent(nameof(UsernameClick), RoutingStrategy.Bubble, 
                 typeof(RoutedEventHandler), typeof(HighlightedTextBlock));
@@ -107,6 +111,12 @@ namespace MultiChatViewer
         {
             get => (bool)GetValue(ShowTimestampProperty);
             set => SetValue(ShowTimestampProperty, value);
+        }
+
+        public bool ShowEmotes
+        {
+            get => (bool)GetValue(ShowEmotesProperty);
+            set => SetValue(ShowEmotesProperty, value);
         }        private RichTextBox _richTextBox;
 
         public HighlightedTextBlock()
@@ -188,6 +198,14 @@ namespace MultiChatViewer
         }
 
         private static void OnShowTimestampChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is HighlightedTextBlock control)
+            {
+                control.UpdateContent();
+            }
+        }
+
+        private static void OnShowEmotesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is HighlightedTextBlock control)
             {
@@ -299,7 +317,7 @@ namespace MultiChatViewer
 
                     paragraph.Inlines.Add(mentionHyperlink);
                 }
-                else if (part.IsEmote && !string.IsNullOrEmpty(part.EmoteUrl))
+                else if (part.IsEmote && !string.IsNullOrEmpty(part.EmoteUrl) && ShowEmotes)
                 {
                     // Create emote image
                     try

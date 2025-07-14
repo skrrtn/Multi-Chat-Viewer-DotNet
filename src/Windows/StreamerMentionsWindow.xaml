@@ -167,6 +167,7 @@
                     SourcePlatform="{Binding SourcePlatform}"
                     SourceChannel="{Binding SourceChannel}"
                     ShowTimestamp="{Binding DataContext.ShowTimestamps, RelativeSource={RelativeSource AncestorType=Window}}"
+                    ShowEmotes="{Binding DataContext.ShowEmotes, RelativeSource={RelativeSource AncestorType=Window}}"
                     VerticalAlignment="Top"
                     MentionClick="HighlightedTextBlock_MentionClick"
                     UsernameClick="HighlightedTextBlock_UsernameClick"/>

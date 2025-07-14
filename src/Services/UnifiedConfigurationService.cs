@@ -17,6 +17,7 @@ namespace MultiChatViewer
         // UI Settings
         public bool ShowTimestamps { get; set; } = true; // Default to showing timestamps
         public bool ReverseChatDirection { get; set; } = false; // Default to newest messages at top
+        public bool ShowEmotes { get; set; } = true; // Default to showing emotes
         
         // Kick credentials (encrypted)
         public string KickClientId { get; set; } = string.Empty;
@@ -597,6 +598,25 @@ namespace MultiChatViewer
 
             await SaveConfigurationAsync();
             _logger.LogInformation("Updated ReverseChatDirection setting: {ReverseChatDirection}", reverseChatDirection);
+        }
+
+        public bool GetShowEmotes()
+        {
+            lock (_lock)
+            {
+                return _config.ShowEmotes;
+            }
+        }
+
+        public async Task SetShowEmotesAsync(bool showEmotes)
+        {
+            lock (_lock)
+            {
+                _config.ShowEmotes = showEmotes;
+            }
+
+            await SaveConfigurationAsync();
+            _logger.LogInformation("Updated ShowEmotes setting: {ShowEmotes}", showEmotes);
         }
 
         #endregion

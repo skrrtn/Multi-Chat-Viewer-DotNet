@@ -33,6 +33,7 @@ namespace MultiChatViewer
         private int _currentChannelMessageCount;        private string _currentChannelDatabaseSize = "0 B";
         private double _chatFontSize = 12.0; // Default font size matches BaseFontSize
         private bool _showTimestamps = true; // Default to showing timestamps
+        private bool _showEmotes = true; // Default to showing emotes
         private string _scrollButtonText = "📄 Scroll to Top"; // Default scroll button text
         private readonly System.Windows.Threading.DispatcherTimer _statusUpdateTimer = new();
         
@@ -136,6 +137,29 @@ namespace MultiChatViewer
                 if (_streamerMentionsWindow != null && _isStreamerMentionsWindowOpen)
                 {
                     _streamerMentionsWindow.UpdateTimestampSetting(value);
+                }
+            }
+        }
+
+        public bool ShowEmotes
+        {
+            get => _showEmotes;
+            set
+            {
+                _showEmotes = value;
+                OnPropertyChanged(nameof(ShowEmotes));
+                
+                // Save the setting to configuration
+                var configService = _serviceProvider.GetService<UnifiedConfigurationService>();
+                if (configService != null)
+                {
+                    _ = Task.Run(async () => await configService.SetShowEmotesAsync(value));
+                }
+                
+                // Update the StreamerMentionsWindow if it's open
+                if (_streamerMentionsWindow != null && _isStreamerMentionsWindowOpen)
+                {
+                    _streamerMentionsWindow.UpdateEmotesSetting(value);
                 }
             }
         }        public bool ScrollToTopButtonVisible
@@ -810,6 +834,10 @@ namespace MultiChatViewer
                     _showTimestamps = configService.GetShowTimestamps();
                     OnPropertyChanged(nameof(ShowTimestamps));
                     _logger.LogDebug("Loaded ShowTimestamps setting: {ShowTimestamps}", _showTimestamps);
+                    
+                    _showEmotes = configService.GetShowEmotes();
+                    OnPropertyChanged(nameof(ShowEmotes));
+                    _logger.LogDebug("Loaded ShowEmotes setting: {ShowEmotes}", _showEmotes);
                     
                     _reverseChatDirection = configService.GetReverseChatDirection();
                     OnPropertyChanged(nameof(ReverseChatDirection));
@@ -1616,6 +1644,13 @@ namespace MultiChatViewer
             // The ShowTimestamps property setter will handle saving to configuration
             // This event is mainly for logging purposes
             _logger.LogDebug("Show timestamps toggled via menu: {ShowTimestamps}", ShowTimestamps);
+        }
+
+        private void ShowEmotesMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            // The ShowEmotes property setter will handle saving to configuration
+            // This event is mainly for logging purposes
+            _logger.LogDebug("Show emotes toggled via menu: {ShowEmotes}", ShowEmotes);
         }
 
         private void StreamerMentionsMenuItem_Click(object sender, RoutedEventArgs e)
