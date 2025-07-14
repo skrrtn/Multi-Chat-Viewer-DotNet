@@ -143,7 +143,16 @@ namespace MultiChatViewer
         {
             if (chatMessage == null) return;
             
-            chatMessage.ParsedMessage = ParseMessage(chatMessage.Message, emoteService);
+            // For system messages, skip emote parsing to preserve original text
+            // Only parse for mentions but not emotes
+            if (chatMessage.IsSystemMessage)
+            {
+                chatMessage.ParsedMessage = ParseMessage(chatMessage.Message, null); // Pass null to skip emote parsing
+            }
+            else
+            {
+                chatMessage.ParsedMessage = ParseMessage(chatMessage.Message, emoteService);
+            }
         }
     }
 }
