@@ -11,6 +11,7 @@ A Windows app for viewing Twitch and Kick.com chat in real-time. No authenticati
 - **Real-time Messages**: See chat as it happens with auto-scroll
 - **Dark Theme**: Easy on the eyes for long viewing sessions
 - **No Login Required**: Connect anonymously to any public channel
+- **Emote Support**: 7TV, BTTV, and FFZ emotes display as images in chat
 
 ### Multi-Channel Support
 - **Monitor Multiple Channels**: Add channels from both platforms
@@ -28,6 +29,7 @@ A Windows app for viewing Twitch and Kick.com chat in real-time. No authenticati
 - **Font Scaling**: Multiple size options (50%-200%)
 - **Zoom with Ctrl+Scroll**: Fine-tune text size (6pt-36pt)
 - **Message Database**: All messages saved locally for searching
+- **Custom Emotes**: Configure approved emotes via `emotes.json` file
 
 ## Installation
 

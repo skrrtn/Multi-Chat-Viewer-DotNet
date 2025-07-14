@@ -7,12 +7,14 @@ using KickLib.Client.Interfaces;
 using KickLib.Client.Models.Args;
 using KickLib.Core;
 using KickLib.Api.Unofficial;
+using MultiChatViewer.Services;
 
 namespace MultiChatViewer
 {
     public class KickChatClient : IChatClient
     {
         private readonly ILogger<KickChatClient> _logger;
+        private readonly EmoteService _emoteService;
         private IKickClient _kickClient;
         private readonly KickUnofficialApi _kickUnofficialApi;
         private string _currentChannel;
@@ -33,9 +35,10 @@ namespace MultiChatViewer
         /// </summary>
         public string InstanceId => _instanceId;
 
-        public KickChatClient(ILogger<KickChatClient> logger)
+        public KickChatClient(ILogger<KickChatClient> logger, EmoteService emoteService)
         {
             _logger = logger;
+            _emoteService = emoteService;
             _kickUnofficialApi = new KickUnofficialApi(logger: logger);
             _instanceId = Guid.NewGuid().ToString("N")[0..8];
             
@@ -204,8 +207,8 @@ namespace MultiChatViewer
                     SourcePlatform = Platform.Kick  // Set the correct platform for Kick messages
                 };
 
-                // Parse the message for @mentions
-                MessageParser.ParseChatMessage(chatMessage);
+                // Parse the message for @mentions and emotes
+                MessageParser.ParseChatMessage(chatMessage, _emoteService);
 
                 _logger.LogDebug("[{InstanceId}] Received message on channel {Channel}: {Username} - {Message}", 
                     _instanceId, _currentChannel, chatMessage.Username, chatMessage.Message);

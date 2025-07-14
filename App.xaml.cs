@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,11 @@ namespace MultiChatViewer
                 // Create and show main window
                 var logger = _serviceProvider.GetRequiredService<ILogger<App>>();
                 logger.LogInformation("Application starting up...");
+
+                // Initialize EmoteService
+                var emoteService = _serviceProvider.GetRequiredService<MultiChatViewer.Services.EmoteService>();
+                await emoteService.InitializeAsync();
+                logger.LogInformation("EmoteService initialized");
 
                 var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
                 logger.LogInformation("MainWindow created, showing window...");
@@ -78,7 +84,10 @@ namespace MultiChatViewer
             services.AddSingleton<BlacklistManager>();
 
             // Register chat clients
-            services.AddSingleton<TwitchIrcClient>();
+            services.AddSingleton<TwitchIrcClient>(provider => 
+                new TwitchIrcClient(
+                    provider.GetRequiredService<ILogger<TwitchIrcClient>>(),
+                    provider.GetRequiredService<MultiChatViewer.Services.EmoteService>()));
             // Note: KickChatClient is NOT registered as singleton - MultiChannelManager creates instances as needed
             services.AddSingleton<KickCredentialsService>();
             
@@ -88,6 +97,7 @@ namespace MultiChatViewer
             services.AddSingleton<MultiChannelManager>();
             services.AddSingleton<UserFilterService>();
             services.AddSingleton<UserMessageLookupService>();
+            services.AddSingleton<MultiChatViewer.Services.EmoteService>();
 
             services.AddTransient<FollowedChannelsWindow>();
             services.AddTransient<UserFiltersWindow>();

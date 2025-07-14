@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using System.Windows.Forms;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
+using MultiChatViewer.Services;
 
 namespace MultiChatViewer
 {    public partial class MainWindow : Window, INotifyPropertyChanged
@@ -21,6 +22,7 @@ namespace MultiChatViewer
         private readonly ChatDatabaseService _databaseService;
         private readonly MultiChannelManager _multiChannelManager;
         private readonly UserFilterService _userFilterService;
+        private readonly EmoteService _emoteService;
         private readonly ILogger<MainWindow> _logger;
         private readonly IServiceProvider _serviceProvider;
         private NotifyIcon _notifyIcon;
@@ -230,7 +232,7 @@ namespace MultiChatViewer
         }
         public MainWindow(TwitchIrcClient twitchClient, ChatDatabaseService databaseService, 
                           MultiChannelManager multiChannelManager, UserFilterService userFilterService,
-                          IServiceProvider serviceProvider, ILogger<MainWindow> logger)
+                          EmoteService emoteService, IServiceProvider serviceProvider, ILogger<MainWindow> logger)
         {
             try
             {
@@ -247,6 +249,7 @@ namespace MultiChatViewer
                 _databaseService = databaseService;
                 _multiChannelManager = multiChannelManager;
                 _userFilterService = userFilterService;
+                _emoteService = emoteService;
                 _serviceProvider = serviceProvider;
                 
                 // Set initial window title (after _multiChannelManager is assigned)
@@ -608,7 +611,7 @@ namespace MultiChatViewer
                 ChatMessages.Clear();
 
                 // Get last 100 messages from database
-                var recentMessages = await _databaseService.GetRecentMessagesAsync(100);
+                var recentMessages = await _databaseService.GetRecentMessagesAsync(100, _emoteService);
                   // Add messages to chat display in newest-first order
                 // GetRecentMessagesAsync returns messages in DESC order (newest first), which is what we want
                 foreach (var message in recentMessages)
@@ -627,7 +630,7 @@ namespace MultiChatViewer
                         Timestamp = DateTime.Now,
                         IsSystemMessage = true
                     };
-                    MessageParser.ParseChatMessage(systemMessage);
+                    MessageParser.ParseChatMessage(systemMessage, _emoteService);
                     AddChatMessage(systemMessage);
                 });
 
@@ -787,7 +790,7 @@ namespace MultiChatViewer
                     Timestamp = DateTime.Now,
                     IsSystemMessage = true
                 };
-                MessageParser.ParseChatMessage(errorMessage);
+                MessageParser.ParseChatMessage(errorMessage, _emoteService);
                 ChatMessages.Insert(0, errorMessage);
             });
         }        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -854,7 +857,7 @@ namespace MultiChatViewer
                         Timestamp = DateTime.Now,
                         IsSystemMessage = true
                     };
-                    MessageParser.ParseChatMessage(welcomeMessage);
+                    MessageParser.ParseChatMessage(welcomeMessage, _emoteService);
                     AddChatMessage(welcomeMessage);
                 }
                 
@@ -950,7 +953,7 @@ namespace MultiChatViewer
                 
                 // Load more messages initially, but respect our limit
                 var messagesToLoad = Math.Min(50, 100); // Load fewer per channel to avoid overwhelming the UI
-                var recentMessages = await tempDatabaseService.GetRecentMessagesAsync(messagesToLoad);
+                var recentMessages = await tempDatabaseService.GetRecentMessagesAsync(messagesToLoad, _emoteService);
                 
                 // Mark messages with their source channel for display
                 foreach (var message in recentMessages)
@@ -1111,7 +1114,7 @@ namespace MultiChatViewer
             {
                 // Load more messages initially, but respect our limit
                 var messagesToLoad = Math.Min(MAX_MESSAGES_IN_CHAT - 50, 100); // Leave room for new messages
-                var recentMessages = await _databaseService.GetRecentMessagesAsync(messagesToLoad);
+                var recentMessages = await _databaseService.GetRecentMessagesAsync(messagesToLoad, _emoteService);
                 
                 // Messages from database are already ordered DESC (newest first)
                 // Insert each message at the end to maintain newest-first order in UI
@@ -1133,7 +1136,7 @@ namespace MultiChatViewer
                         Timestamp = DateTime.Now,
                         IsSystemMessage = true
                     };
-                    MessageParser.ParseChatMessage(systemMessage);
+                    MessageParser.ParseChatMessage(systemMessage, _emoteService);
                     ChatMessages.Insert(0, systemMessage);
                 }
             }catch (Exception ex)
@@ -1148,7 +1151,7 @@ namespace MultiChatViewer
                     Timestamp = DateTime.Now,
                     IsSystemMessage = true
                 };
-                MessageParser.ParseChatMessage(errorMessage);
+                MessageParser.ParseChatMessage(errorMessage, _emoteService);
                 ChatMessages.Insert(0, errorMessage);
             }
         }        private void OnBackgroundMessageReceived(object sender, (string Channel, ChatMessage Message) args)
@@ -1515,7 +1518,7 @@ namespace MultiChatViewer
                     Timestamp = DateTime.Now,
                     IsSystemMessage = true
                 };
-                MessageParser.ParseChatMessage(systemMessage);
+                MessageParser.ParseChatMessage(systemMessage, _emoteService);
                 ChatMessages.Insert(0, systemMessage);                // Auto-scroll to top since we enabled auto-scroll
                 var scrollViewer = ChatScrollViewer;
                 scrollViewer?.ScrollToTop();
@@ -1535,7 +1538,7 @@ namespace MultiChatViewer
                     Timestamp = DateTime.Now,
                     IsSystemMessage = true
                 };
-                MessageParser.ParseChatMessage(errorMessage);
+                MessageParser.ParseChatMessage(errorMessage, _emoteService);
                 ChatMessages.Insert(0, errorMessage);
             }
         }

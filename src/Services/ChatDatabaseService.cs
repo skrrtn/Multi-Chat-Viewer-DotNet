@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+using MultiChatViewer.Services;
 
 namespace MultiChatViewer
 {    public class ChatDatabaseService(ILogger<ChatDatabaseService> logger)
@@ -286,7 +287,7 @@ namespace MultiChatViewer
             {
                 return 0;
             }
-        }        public async Task<List<ChatMessage>> GetRecentMessagesAsync(int count = 100)
+        }        public async Task<List<ChatMessage>> GetRecentMessagesAsync(int count = 100, EmoteService emoteService = null)
         {
             var messages = new List<ChatMessage>();
 
@@ -316,8 +317,8 @@ namespace MultiChatViewer
                         IsSystemMessage = reader.GetBoolean(3)
                     };
                     
-                    // Parse the message for @mentions
-                    MessageParser.ParseChatMessage(message);
+                    // Parse the message for @mentions and emotes
+                    MessageParser.ParseChatMessage(message, emoteService);
                     
                     messages.Add(message);
                 }

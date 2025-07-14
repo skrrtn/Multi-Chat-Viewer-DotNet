@@ -5,12 +5,14 @@ using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using System.Linq;
+using MultiChatViewer.Services;
 
 namespace MultiChatViewer
 {
-    public class UserMessageLookupService(ILogger<UserMessageLookupService> logger)
+    public class UserMessageLookupService(ILogger<UserMessageLookupService> logger, EmoteService emoteService)
     {
         private readonly ILogger<UserMessageLookupService> _logger = logger;
+        private readonly EmoteService _emoteService = emoteService;
 
         /// <summary>
         /// Gets all channels where the specified user has posted messages
@@ -150,8 +152,8 @@ namespace MultiChatViewer
                         SourcePlatform = detectedPlatform  // Set the detected platform
                     };
                     
-                    // Parse the message for @mentions
-                    MessageParser.ParseChatMessage(message);
+                        // Parse the message for @mentions and emotes
+                    MessageParser.ParseChatMessage(message, _emoteService);
                     
                     messages.Add(message);
                 }
@@ -342,8 +344,8 @@ namespace MultiChatViewer
                         SourcePlatform = detectedPlatform  // Set the detected platform
                     };
                     
-                    // Parse the message for @mentions
-                    MessageParser.ParseChatMessage(message);
+                    // Parse the message for @mentions and emotes
+                    MessageParser.ParseChatMessage(message, _emoteService);
                     
                     messages.Add(message);
                 }

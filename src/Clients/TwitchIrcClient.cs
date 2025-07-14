@@ -5,12 +5,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using MultiChatViewer.Services;
 
 namespace MultiChatViewer
 {
     public class TwitchIrcClient : IChatClient
     {
         private readonly ILogger<TwitchIrcClient> _logger;
+        private readonly EmoteService _emoteService;
         private TcpClient _tcpClient;
         private StreamReader _reader;
         private StreamWriter _writer;
@@ -29,9 +31,10 @@ namespace MultiChatViewer
         public string CurrentChannel => _currentChannel;
         public bool IsConnected => _tcpClient?.Connected == true;
 
-        public TwitchIrcClient(ILogger<TwitchIrcClient> logger)
+        public TwitchIrcClient(ILogger<TwitchIrcClient> logger, EmoteService emoteService)
         {
             _logger = logger;
+            _emoteService = emoteService;
             _logger.LogInformation("TwitchIrcClient initialized");
         }
 
@@ -199,8 +202,8 @@ namespace MultiChatViewer
                     SourcePlatform = Platform.Twitch  // Set the correct platform for Twitch messages
                 };
 
-                // Parse the message for @mentions
-                MessageParser.ParseChatMessage(chatMessage);
+                // Parse the message for @mentions and emotes
+                MessageParser.ParseChatMessage(chatMessage, _emoteService);
 
                 return chatMessage;
             }

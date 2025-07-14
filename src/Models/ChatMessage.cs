@@ -8,6 +8,8 @@ namespace MultiChatViewer
         public string Text { get; set; } = string.Empty;
         public bool IsMention { get; set; } = false;
         public string MentionedUsername { get; set; } = string.Empty;
+        public bool IsEmote { get; set; } = false;
+        public string EmoteUrl { get; set; } = string.Empty;
     }
 
     public class ChatMessage

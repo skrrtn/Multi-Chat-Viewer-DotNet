@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace MultiChatViewer
 {    public partial class HighlightedTextBlock : UserControl
@@ -297,6 +298,53 @@ namespace MultiChatViewer
                     };
 
                     paragraph.Inlines.Add(mentionHyperlink);
+                }
+                else if (part.IsEmote && !string.IsNullOrEmpty(part.EmoteUrl))
+                {
+                    // Create emote image
+                    try
+                    {
+                        var bitmapImage = new BitmapImage();
+                        bitmapImage.BeginInit();
+                        bitmapImage.UriSource = new Uri(part.EmoteUrl);
+                        bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmapImage.DecodePixelHeight = (int)(_richTextBox.FontSize + 4); // Decode at display size for better performance
+                        bitmapImage.EndInit();
+                        
+                        var emoteImage = new Image
+                        {
+                            Source = bitmapImage,
+                            Width = _richTextBox.FontSize + 4, // Slightly larger than text
+                            Height = _richTextBox.FontSize + 4,
+                            Margin = new Thickness(1, 0, 1, 0),
+                            VerticalAlignment = VerticalAlignment.Center,
+                            ToolTip = part.Text, // Show emote name as tooltip
+                            Stretch = Stretch.Uniform
+                        };
+
+                        // Handle image loading errors
+                        bitmapImage.DownloadFailed += (sender, e) =>
+                        {
+                            // Image failed to load, will fall back to text
+                        };
+
+                        // Create InlineUIContainer to hold the image
+                        var container = new InlineUIContainer(emoteImage);
+                        paragraph.Inlines.Add(container);
+                    }
+                    catch (Exception)
+                    {
+                        // If emote image fails to load, fall back to text
+                        var messageBrush = IsSystemMessage ?
+                            new SolidColorBrush(Color.FromRgb(156, 220, 254)) : // #9cdcfe for system messages
+                            Brushes.White;
+
+                        var textRun = new Run(part.Text)
+                        {
+                            Foreground = messageBrush
+                        };
+                        paragraph.Inlines.Add(textRun);
+                    }
                 }
                 else
                 {

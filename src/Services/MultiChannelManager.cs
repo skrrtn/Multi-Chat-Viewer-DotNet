@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using MultiChatViewer.Services;
 
 namespace MultiChatViewer
 {    public class FollowedChannel : INotifyPropertyChanged
@@ -189,7 +190,7 @@ namespace MultiChatViewer
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-    }    public class MultiChannelManager(ILogger<MultiChannelManager> logger, ILoggerFactory loggerFactory, ChannelSettingsManager settingsManager, UserFilterService userFilterService, FollowedChannelsStorage followedChannelsStorage, UnifiedConfigurationService configService, KickCredentialsService kickCredentialsService) : IDisposable
+    }    public class MultiChannelManager(ILogger<MultiChannelManager> logger, ILoggerFactory loggerFactory, ChannelSettingsManager settingsManager, UserFilterService userFilterService, FollowedChannelsStorage followedChannelsStorage, UnifiedConfigurationService configService, KickCredentialsService kickCredentialsService, EmoteService emoteService) : IDisposable
     {        private readonly ConcurrentDictionary<string, FollowedChannel> _followedChannels = new();
         private readonly ConcurrentDictionary<string, IChatClient> _clients = new(); // Store both TwitchIrcClient and KickChatClient
         private readonly ConcurrentDictionary<string, ChatDatabaseService> _databases = new();
@@ -200,6 +201,7 @@ namespace MultiChatViewer
         private readonly FollowedChannelsStorage _followedChannelsStorage = followedChannelsStorage;
         private readonly UnifiedConfigurationService _configService = configService;
         private readonly KickCredentialsService _kickCredentialsService = kickCredentialsService;
+        private readonly EmoteService _emoteService = emoteService;
 
         // ...existing code...
         public event EventHandler<(string Channel, ChatMessage Message)> MessageReceived;
@@ -435,7 +437,7 @@ namespace MultiChatViewer
                 
                 if (platform == Platform.Twitch)
                 {
-                    var twitchClient = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>());
+                    var twitchClient = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>(), _emoteService);
                     twitchClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
                     twitchClient.Connected += (sender, channel) => OnClientConnected(channelKey);
                     twitchClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
@@ -448,7 +450,7 @@ namespace MultiChatViewer
                     _logger.LogInformation("Creating Kick client for channel: {Channel} (this will be Kick channel #{Number})", normalizedChannel, existingKickChannels + 1);
                     
                     // Create Kick client (credentials are optional for reading public chat)
-                    var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>());
+                    var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>(), _emoteService);
                     _logger.LogInformation("Created KickChatClient for {Channel} with InstanceId: {InstanceId}", normalizedChannel, kickClient.InstanceId);
                     
                     kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
@@ -915,7 +917,7 @@ namespace MultiChatViewer
                         
                         if (followedChannel.Platform == Platform.Twitch)
                         {
-                            var twitchClient = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>());
+                            var twitchClient = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>(), _emoteService);
                             twitchClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
                             twitchClient.Connected += (sender, channel) => OnClientConnected(channelKey);
                             twitchClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
@@ -925,7 +927,7 @@ namespace MultiChatViewer
                         else if (followedChannel.Platform == Platform.Kick)
                         {
                             // Create Kick client (credentials optional for reading public chat)
-                            var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>());
+                            var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>(), _emoteService);
                             kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
                             kickClient.Connected += (sender, channel) => OnClientConnected(channelKey);
                             kickClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
@@ -1320,7 +1322,7 @@ namespace MultiChatViewer
                 
                 if (platform == Platform.Twitch)
                 {
-                    var twitchClient = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>());
+                    var twitchClient = new TwitchIrcClient(_loggerFactory.CreateLogger<TwitchIrcClient>(), _emoteService);
                     twitchClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
                     twitchClient.Connected += (sender, channel) => OnClientConnected(channelKey);
                     twitchClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
@@ -1329,7 +1331,7 @@ namespace MultiChatViewer
                 }
                 else if (platform == Platform.Kick)
                 {
-                    var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>());
+                    var kickClient = new KickChatClient(_loggerFactory.CreateLogger<KickChatClient>(), _emoteService);
                     kickClient.MessageReceived += (sender, message) => OnClientMessageReceived(channelKey, message);
                     kickClient.Connected += (sender, channel) => OnClientConnected(channelKey);
                     kickClient.Disconnected += (sender, args) => OnClientDisconnected(channelKey);
