@@ -135,7 +135,9 @@ namespace MultiChatViewer
                 IsDocumentEnabled = true,
                 Document = new FlowDocument()
                 {
-                    PagePadding = new Thickness(0)
+                    PagePadding = new Thickness(0),
+                    LineHeight = double.NaN, // Auto line height for consistent spacing
+                    TextAlignment = TextAlignment.Left
                 }
             };
 
@@ -326,7 +328,22 @@ namespace MultiChatViewer
                         bitmapImage.BeginInit();
                         bitmapImage.UriSource = new Uri(part.EmoteUrl);
                         bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                        var emoteSize = (_richTextBox.FontSize + 4) * 1.5;
+                        
+                        // Size emotes to match the line height for consistent alignment
+                        // Calculate line height based on font size and family
+                        var fontFamily = _richTextBox.FontFamily;
+                        var typeface = new Typeface(fontFamily, _richTextBox.FontStyle, _richTextBox.FontWeight, _richTextBox.FontStretch);
+                        var formattedText = new FormattedText(
+                            "Ag", // Use characters with ascenders and descenders to get full line height
+                            System.Globalization.CultureInfo.CurrentCulture,
+                            FlowDirection.LeftToRight,
+                            typeface,
+                            _richTextBox.FontSize,
+                            Brushes.Black,
+                            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                        
+                        // Use the actual line height for emote sizing to ensure perfect alignment
+                        var emoteSize = Math.Max(formattedText.Height * 0.9, _richTextBox.FontSize * 1.1); // Slightly smaller than line height
                         bitmapImage.DecodePixelHeight = (int)emoteSize; // Decode at display size for better performance
                         bitmapImage.EndInit();
                         
@@ -335,8 +352,7 @@ namespace MultiChatViewer
                             Source = bitmapImage,
                             Width = emoteSize,
                             Height = emoteSize,
-                            Margin = new Thickness(1, 0, 1, 0),
-                            VerticalAlignment = VerticalAlignment.Center,
+                            Margin = new Thickness(2, 0, 2, 0), // Small horizontal margin for spacing
                             ToolTip = part.Text, // Show emote name as tooltip
                             Stretch = Stretch.Uniform
                         };
@@ -347,8 +363,12 @@ namespace MultiChatViewer
                             // Image failed to load, will fall back to text
                         };
 
-                        // Create InlineUIContainer to hold the image
-                        var container = new InlineUIContainer(emoteImage);
+                        // Create InlineUIContainer to hold the image with proper baseline alignment
+                        var container = new InlineUIContainer(emoteImage)
+                        {
+                            // Set baseline alignment to center the emote with the text baseline
+                            BaselineAlignment = BaselineAlignment.Center
+                        };
                         paragraph.Inlines.Add(container);
                     }
                     catch (Exception)
