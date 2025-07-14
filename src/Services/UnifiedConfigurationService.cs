@@ -15,9 +15,9 @@ namespace MultiChatViewer
         public DateTime LastSaved { get; set; } = DateTime.Now;
         
         // UI Settings
-        public bool ShowTimestamps { get; set; } = true; // Default to showing timestamps
+        public bool ShowTimestamps { get; set; } = false; // Default to hiding timestamps
         public bool ReverseChatDirection { get; set; } = false; // Default to newest messages at top
-        public bool ShowEmotes { get; set; } = true; // Default to showing emotes
+        public bool ShowEmotes { get; set; } = false; // Default to hiding emotes
         
         // Kick credentials (encrypted)
         public string KickClientId { get; set; } = string.Empty;

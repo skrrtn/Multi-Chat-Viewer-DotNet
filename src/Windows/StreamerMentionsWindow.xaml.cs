@@ -18,9 +18,10 @@ namespace MultiChatViewer
         private readonly MultiChannelManager _multiChannelManager;
         private string _currentChannelName;
         private double _chatFontSize = 12.0; // Default font size
-        private bool _showTimestamps = true; // Default to showing timestamps (matches main window)
-        private bool _showEmotes = true; // Default to showing emotes (matches main window)
+        private bool _showTimestamps = false; // Default to hiding timestamps (matches main window)
+        private bool _showEmotes = false; // Default to hiding emotes (matches main window)
         private bool _timestampExplicitlySet = false; // Track if timestamp was explicitly set in constructor
+        private bool _emotesExplicitlySet = false; // Track if emotes was explicitly set in constructor
         private bool _reverseChatDirectionExplicitlySet = false; // Track if reverse chat direction was explicitly set in constructor
         private bool _scrollToTopButtonVisible = false;
         private bool _isAutoScrollEnabled = true;
@@ -142,7 +143,7 @@ namespace MultiChatViewer
 
         private string _scrollButtonText = "📄 Scroll to Top"; // Default scroll button text
 
-        public StreamerMentionsWindow(IServiceProvider serviceProvider, string channelName = null, bool? showTimestamps = null, bool? reverseChatDirection = null)
+        public StreamerMentionsWindow(IServiceProvider serviceProvider, string channelName = null, bool? showTimestamps = null, bool? showEmotes = null, bool? reverseChatDirection = null)
         {
             InitializeComponent();
             
@@ -159,6 +160,13 @@ namespace MultiChatViewer
             {
                 _showTimestamps = showTimestamps.Value;
                 _timestampExplicitlySet = true;
+            }
+            
+            // If showEmotes is provided, use it immediately before loading other settings
+            if (showEmotes.HasValue)
+            {
+                _showEmotes = showEmotes.Value;
+                _emotesExplicitlySet = true;
             }
             
             // If reverseChatDirection is provided, use it immediately before loading other settings
@@ -215,8 +223,11 @@ namespace MultiChatViewer
                         ShowTimestamps = configService.GetShowTimestamps();
                     }
                     
-                    // Always load emotes setting from config (no explicit setting support for this yet)
-                    ShowEmotes = configService.GetShowEmotes();
+                    // Only load emotes setting from config if it wasn't explicitly set in constructor
+                    if (!_emotesExplicitlySet)
+                    {
+                        ShowEmotes = configService.GetShowEmotes();
+                    }
                     
                     // Only load reverse chat direction setting from config if it wasn't explicitly set in constructor
                     if (!_reverseChatDirectionExplicitlySet)

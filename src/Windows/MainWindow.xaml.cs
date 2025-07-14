@@ -32,8 +32,8 @@ namespace MultiChatViewer
         private Platform _currentChannelPlatform = Platform.Twitch;
         private int _currentChannelMessageCount;        private string _currentChannelDatabaseSize = "0 B";
         private double _chatFontSize = 12.0; // Default font size matches BaseFontSize
-        private bool _showTimestamps = true; // Default to showing timestamps
-        private bool _showEmotes = true; // Default to showing emotes
+        private bool _showTimestamps = false; // Default to hiding timestamps
+        private bool _showEmotes = false; // Default to hiding emotes
         private string _scrollButtonText = "📄 Scroll to Top"; // Default scroll button text
         private readonly System.Windows.Threading.DispatcherTimer _statusUpdateTimer = new();
         
@@ -1709,7 +1709,7 @@ namespace MultiChatViewer
                     if (shouldBeOpen && (_streamerMentionsWindow == null || !_isStreamerMentionsWindowOpen))
                     {
                         // Create and show the Streamer Mentions window with current settings
-                        _streamerMentionsWindow = new StreamerMentionsWindow(_serviceProvider, null, ShowTimestamps, ReverseChatDirection);
+                        _streamerMentionsWindow = new StreamerMentionsWindow(_serviceProvider, null, ShowTimestamps, ShowEmotes, ReverseChatDirection);
                         
                         // Subscribe to the Closed event to update our state
                         _streamerMentionsWindow.Closed += StreamerMentionsWindow_Closed;
