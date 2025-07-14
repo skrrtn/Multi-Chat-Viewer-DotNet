@@ -326,14 +326,15 @@ namespace MultiChatViewer
                         bitmapImage.BeginInit();
                         bitmapImage.UriSource = new Uri(part.EmoteUrl);
                         bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                        bitmapImage.DecodePixelHeight = (int)(_richTextBox.FontSize + 4); // Decode at display size for better performance
+                        var emoteSize = (_richTextBox.FontSize + 4) * 1.5;
+                        bitmapImage.DecodePixelHeight = (int)emoteSize; // Decode at display size for better performance
                         bitmapImage.EndInit();
                         
                         var emoteImage = new Image
                         {
                             Source = bitmapImage,
-                            Width = _richTextBox.FontSize + 4, // Slightly larger than text
-                            Height = _richTextBox.FontSize + 4,
+                            Width = emoteSize,
+                            Height = emoteSize,
                             Margin = new Thickness(1, 0, 1, 0),
                             VerticalAlignment = VerticalAlignment.Center,
                             ToolTip = part.Text, // Show emote name as tooltip
