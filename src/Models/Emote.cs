@@ -7,7 +7,8 @@ namespace MultiChatViewer
         BTTV,
         FFZ,
         [JsonPropertyName("7TV")]
-        Seventv
+        Seventv,
+        Kick
     }
 
     public class Emote
@@ -24,6 +25,7 @@ namespace MultiChatViewer
                 EmotePlatform.BTTV => $"https://cdn.betterttv.net/emote/{Id}/1x",
                 EmotePlatform.FFZ => $"https://cdn.frankerfacez.com/emote/{Id}/1",
                 EmotePlatform.Seventv => $"https://cdn.7tv.app/emote/{Id}/1x.webp",
+                EmotePlatform.Kick => $"https://files.kick.com/emotes/{Id}/fullsize",
                 _ => string.Empty,
             };
         }

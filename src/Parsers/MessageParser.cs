@@ -18,6 +18,11 @@ namespace MultiChatViewer
         [GeneratedRegex(@"\b[a-zA-Z0-9_]+\b", RegexOptions.Compiled)]
         private static partial Regex WordRegex();
 
+        // Regex pattern to match Kick emotes
+        // Matches [emote:ID:emoteName] format from Kick chat
+        [GeneratedRegex(@"\[emote:(\d+):([a-zA-Z0-9_]+)\]", RegexOptions.Compiled)]
+        private static partial Regex KickEmoteRegex();
+
         /// <summary>
         /// Parses a chat message and identifies @username mentions and emotes
         /// </summary>
@@ -34,12 +39,39 @@ namespace MultiChatViewer
             }
 
             var mentionMatches = MentionRegex().Matches(message);
+            var kickEmoteMatches = KickEmoteRegex().Matches(message);
             var allMatches = new List<(int Index, int Length, string Text, bool IsMention, string MentionedUsername, bool IsEmote, string EmoteUrl)>();
 
             // Add mention matches
             foreach (Match match in mentionMatches)
             {
                 allMatches.Add((match.Index, match.Length, match.Value, true, match.Groups[1].Value, false, string.Empty));
+            }
+
+            // Add Kick emote matches
+            foreach (Match match in kickEmoteMatches)
+            {
+                var emoteId = match.Groups[1].Value;
+                var emoteName = match.Groups[2].Value;
+                var emoteUrl = string.Empty;
+
+                // If emotes are enabled, try to get the emote URL
+                if (emoteService != null)
+                {
+                    var existingEmote = emoteService.GetEmote(emoteName);
+                    if (existingEmote != null)
+                    {
+                        emoteUrl = existingEmote.Url;
+                    }
+                    else
+                    {
+                        // Create Kick emote URL using the emote ID
+                        emoteUrl = $"https://files.kick.com/emotes/{emoteId}/fullsize";
+                    }
+                }
+
+                // Add the emote match with just the emote name as display text
+                allMatches.Add((match.Index, match.Length, emoteName, false, string.Empty, emoteService != null, emoteUrl));
             }
 
             // Add emote matches if emote service is available
@@ -59,7 +91,18 @@ namespace MultiChatViewer
                         }
                     }
 
-                    if (!isPartOfMention && emoteService.IsEmote(match.Value))
+                    // Skip if this word is already part of a Kick emote
+                    bool isPartOfKickEmote = false;
+                    foreach (Match kickEmoteMatch in kickEmoteMatches)
+                    {
+                        if (match.Index >= kickEmoteMatch.Index && match.Index < kickEmoteMatch.Index + kickEmoteMatch.Length)
+                        {
+                            isPartOfKickEmote = true;
+                            break;
+                        }
+                    }
+
+                    if (!isPartOfMention && !isPartOfKickEmote && emoteService.IsEmote(match.Value))
                     {
                         var emote = emoteService.GetEmote(match.Value);
                         if (emote != null)
