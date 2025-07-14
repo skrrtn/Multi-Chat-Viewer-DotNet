@@ -53,6 +53,9 @@ namespace MultiChatViewer
         // Window minimize handling for performance
         private bool _isMinimized = false;
         private readonly Queue<ChatMessage> _minimizedPausedMessages = [];
+        
+        // Flag to indicate if the application is truly exiting
+        private bool _isExiting = false;
 
         public ObservableCollection<ChatMessage> ChatMessages { get; } = [];public bool IsConnected
         {
@@ -313,6 +316,9 @@ namespace MultiChatViewer
                 
                 // Subscribe to window state changes for minimize/restore handling
                 this.StateChanged += MainWindow_StateChanged;
+                
+                // Subscribe to window closing event to minimize to tray instead of closing
+                this.Closing += MainWindow_Closing;
                 
                 // Initialize system tray
                 if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
@@ -1323,7 +1329,12 @@ namespace MultiChatViewer
             try
             {
                 _logger.LogInformation("Application exit requested from menu");
-                this.Close();
+                
+                // Set flag to indicate we're truly exiting
+                _isExiting = true;
+                
+                // Shutdown the entire application
+                System.Windows.Application.Current.Shutdown();
             }
             catch (Exception ex)
             {
@@ -1503,7 +1514,40 @@ namespace MultiChatViewer
                     ProcessMinimizedPausedMessages();
                 }
             }
-        }        private async void ProcessMinimizedPausedMessages()
+        }        private void MainWindow_Closing(object sender, CancelEventArgs e)
+        {
+            // If we're truly exiting, allow the close
+            if (_isExiting)
+            {
+                _logger.LogInformation("Application is exiting - allowing window close");
+                
+                // Clean up system tray icon
+                if (_notifyIcon != null)
+                {
+                    _notifyIcon.Visible = false;
+                    _notifyIcon.Dispose();
+                }
+                
+                return;
+            }
+            
+            // Don't close the window, minimize to tray instead
+            e.Cancel = true;
+            
+            if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+            {
+                HideToTray();
+            }
+            else
+            {
+                // Fallback to normal minimize if system tray is not available
+                this.WindowState = WindowState.Minimized;
+                _isMinimized = true;
+            }
+            
+            _logger.LogInformation("Window close requested - minimized to system tray instead");
+        }
+        private async void ProcessMinimizedPausedMessages()
         {
             // Clear any queued messages since we'll reload from database instead
             var queuedCount = _minimizedPausedMessages.Count;
